@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "at_engine.h": "c",
+        "at_common_def.h": "c"
+    }
+}
