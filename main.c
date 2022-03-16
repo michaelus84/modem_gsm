@@ -1,8 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+
+#include "at_engine.h"
 
 int main()
 {
-    printf("Hello world!\n");
-    return 0;
+  ModemRsInit();
+
+  while(1)
+  {
+    ModemGsmModule();
+    usleep(1000);
+  }
+  return 0;
 }

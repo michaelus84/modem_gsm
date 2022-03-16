@@ -6,7 +6,6 @@
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje prprocesora - lokalna
 */
-
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow lokalnych
@@ -31,7 +30,7 @@ static uint8_t AtAccount(uint8_t stage, AtCommandParametersTypedef * values);
 Definicje stalych
 */
 
-static StingListTypedef const Sim800_Error_List[] =
+static StringListTypedef const Error_List[] =
 {
   {NULL, "ERROR"         },
   {NULL, "+CME ERROR: %d"},
@@ -42,7 +41,7 @@ static StingListTypedef const Sim800_Error_List[] =
  * @brief Lista URC do sprawdzenia
  *
  */
-static StingListTypedef const Sim800UrcList[] =
+static StringListTypedef const UrcList[] =
 {
   {&AtSmsRecieve, "+CMTI: \"SM\",%d"                                                        },
   {&AtRing      , "RING"                                                                    },
@@ -50,20 +49,22 @@ static StingListTypedef const Sim800UrcList[] =
   {&AtAccount   , "+CUSD: %d, \"Pozostalo Ci %d,%dzl do wykorzystania do %d-%d-%d %d:%d:%d."}
 };
 
+static AtCommandStrListTypedef Sim800_Error_List = {Error_List, _NumOfRows(Error_List)};
+static AtCommandStrListTypedef Sim800_Urc_List   = {UrcList   , _NumOfRows(UrcList)   };
+
 /**
  * @brief Lista komend AT do wyslania
  *
  */
-static AtCommandLineTypedef const Sim800_At_Commands_List[] =
+static AtCommandLineTypedef const Sim800_At_Commands[] =
 {
   {LB_EMPTY, 5,  3, ""                      , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // ustawiamy pelna funkconalnosc
   {LB_ECHO,  0,  3, "E0"                    , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
   {LB_CMEE,  0,  3, "+CMEE=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // numeryczny format bledu
   {LB_CFUN,  5,180, "+CFUN=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // ustawiamy pelna funkconalnosc
   {LB_CGAT,  0,180, "+CGATT=1"              , NULL          , NULL      , REBOOT, DEFAULT,      0, 0},  // rejestrcja do sieci
-  {LB_CMGF,  0,  3, "+CMGF=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // tekstowy format SMS-a
-  {LB_CSCS,  0,  3, "+CSCS=\"GSM\""         , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
-  {LB_CUSD,  0,  3, "+CUSD=1,\"*101#\""     , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
+//{LB_CMGF,  0,  3, "+CMGF=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // tekstowy format SMS-a
+//{LB_CSCS,  0,  3, "+CSCS=\"GSM\""         , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
   {LB_CSQ,   0,  3, "+CSQ"                  , "+CSQ: %d,%d" , &AtCsq    , IGNORE, DEFAULT,      0, 0},
   {LB_CREG,  5,  3, "+CREG?"                , "+CREG: %d,%d", &AtReg    , JUMP  , JUMP,    LB_CSQ, 0}
 };
@@ -88,17 +89,45 @@ static AtCommandLineTypedef const Sim800_At_Ring[] =
   {       0, 0, 60, "H"                     , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // odrzuc polaczenie
 };
 
+static AtCommandListTypedef Sim800_At_Commands_List = {Sim800_At_Commands, _NumOfRows(Sim800_At_Commands)};
+static AtCommandListTypedef Sim800_At_Sms_Send_List = {Sim800_At_Sms_Send, _NumOfRows(Sim800_At_Sms_Send)};
+
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje zmiennych
 */
 
-
+static AtCmdFlowTypedef * sim800_cmd_flow;
+static ModemStatusTypedef * modem_status;
+static AtScriptInitTypedef * sim800_ops;
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Funkcje
 */
+
+/**
+ * @brief 
+ * 
+ * @param cmd_flow 
+ */
+void Sim800InitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status)
+{
+  sim800_cmd_flow = cmd_flow;
+  modem_status = status;
+
+  if (NULL == ops || NULL == cmd_flow)
+    return;
+
+  memset(ops, 0, sizeof(AtScriptInitTypedef));
+
+  ops->base = &Sim800_At_Commands_List;
+  ops->sms_send = &Sim800_At_Sms_Send_List;
+  ops->error = &Sim800_Error_List;
+  ops->urc = &Sim800_Urc_List;
+
+  sim800_ops = ops;
+}
 
 /**
  * @brief  * @brief  Funkcja pomocnicza od wyslania SMS-a
@@ -112,7 +141,7 @@ static uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values)
   switch (stage)
   {
     case AT_SEND_STAGE:
-      PutStringToStream((char *)sms_out_queue.phone_number[sms_out_queue.start], values);
+
       break;
 
     case AT_ITR_STAGE:
@@ -120,14 +149,11 @@ static uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values)
       break;
 
     case AT_OK_STAGE:
-      IncrementIndex(&sms_out_queue.start, 1, SMS_QUEUE_DEPTH);
-      if (sms_out_queue.fill_status) sms_out_queue.fill_status--;
-      sms_out_queue.busy = 0;
-      SmsSendStatus(TRUE);
+
       break;
 
     case AT_ERROR_STAGE:
-      SmsSendStatus(FALSE);
+
       break;
 
     default:
@@ -146,46 +172,29 @@ static uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values)
 static uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values)
 {
   uint16_t index = 0;
-  uint16_t len;
-  char * str_ptr;
 
   switch (stage)
   {
     case AT_SEND_STAGE:
-      // sprawdzamy czy jest najpierw miejsce w kolejce
-      if (sms_in_queue.fill_status >= SMS_QUEUE_DEPTH)  return FALSE;
-      //zerujemy rzeczy od SMS-a
+
       EXPECTED_SMS = 0;
       break;
 
     case AT_ITR_STAGE:
 
-      GetStringFromStream(&len, values, &index);
-      // numer telefonu
-      str_ptr = GetStringFromStream(&len, values, &index);
-      memset(sms_in_queue.phone_number[sms_in_queue.end], 0, PHONE_NUMBER_STR_LEN);
-      if (len > PHONE_NUMBER_LEN) len = PHONE_NUMBER_LEN;
-      memcpy(sms_in_queue.phone_number[sms_in_queue.end], str_ptr, len);
-      // czas
-      str_ptr = GetStringFromStream(&len, values, &index);
-      memset(sms_in_queue.time[sms_in_queue.end], 0, SMS_TIME_STR_LEN);
-      if (len > SMS_TIME_LEN) len = SMS_TIME_LEN;
-      memcpy(sms_in_queue.time[sms_in_queue.end], str_ptr, len);
-      // data
-      str_ptr = GetStringFromStream(&len, values, &index);
-      memset(sms_in_queue.date[sms_in_queue.end], 0, SMS_DATE_STR_LEN);
-      if (len > SMS_DATE_LEN) len = SMS_DATE_LEN;
-      memcpy(sms_in_queue.date[sms_in_queue.end], str_ptr, len);
       EXPECTED_SMS = 1;
       break;
 
     case AT_URC_STAGE:
-      modem_status.sms_num = GetNumberFromStream(values, &index);
-      PutAtCmdListToFlow((AtCommandLineTypedef *)at_sms_recieve, _NumOfRows(at_sms_recieve), &at_cmd_flow);
+      modem_status->sms_num = GetNumberFromStream(values, &index);
+      PutAtCmdListToFlow((AtCommandLineTypedef *)Sim800_At_Sms_Recieve, _NumOfRows(Sim800_At_Sms_Recieve), sim800_cmd_flow);
       break;
 
     case AT_OK_STAGE:
-
+      if (sim800_ops->SmsRecieveCallback != NULL)
+      {
+        sim800_ops->SmsRecieveCallback();
+      }
       break;
 
     case AT_ERROR_STAGE:
@@ -215,7 +224,7 @@ static uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values)
       break;
 
     case AT_ITR_STAGE:
-      modem_status.csq = GetNumberFromStream(values, &index);
+      modem_status->csq = GetNumberFromStream(values, &index);
       break;
 
     case AT_OK_STAGE:
@@ -250,8 +259,8 @@ static uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values)
       break;
 
     case AT_ITR_STAGE:
-      modem_status.reg = GetNumberFromStream(values, &index);
-      modem_status.reg = GetNumberFromStream(values, &index);
+      modem_status->reg = GetNumberFromStream(values, &index);
+      modem_status->reg = GetNumberFromStream(values, &index);
       break;
 
     case AT_OK_STAGE:
@@ -278,7 +287,7 @@ static uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values)
 static uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values)
 {
   if (AT_URC_STAGE == stage)
-    PutAtCmdListToFlow((AtCommandLineTypedef *)at_ring, _NumOfRows(at_ring), &at_cmd_flow);
+    PutAtCmdListToFlow((AtCommandLineTypedef *)Sim800_At_Ring, _NumOfRows(Sim800_At_Ring), sim800_cmd_flow);
   return TRUE;
 }
 
@@ -308,4 +317,3 @@ static uint8_t AtAccount(uint8_t stage, AtCommandParametersTypedef * values)
   }
   return TRUE;
 }
-#endif

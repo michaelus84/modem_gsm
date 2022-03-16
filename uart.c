@@ -2,9 +2,11 @@
 #include <fcntl.h>
 #include <sys/signal.h>
 #include <sys/types.h>
-#include "config.h"
+#include <stdlib.h>
+
 #include "uart.h"
-#include "interface.h"
+#include "def.h"
+#include "common.h"
 
 /**
  * @brief Funkcja konfigurujaca port uart
@@ -54,6 +56,13 @@ void SerialPortConfig(UartParametersTypedef * handle, uint32_t baudrate, char * 
  */
 uint8_t UartWrite(UartParametersTypedef * handle, uint8_t * data, uint32_t len)
 {
+#if defined(DEBUG)
+  for (uint32_t i = 0; i < len; i++)
+  {
+    printf("%c", (char)data[i]);
+  }
+  printf("\n");
+#endif
   if (write(handle->fd, data, len) < 0) return RETURN_FAILURE;
 
   return RETURN_SUCCESS;

@@ -4,6 +4,8 @@
 #include "uart.h"
 #include "at_engine.h"
 #include "at_common_def.h"
+#include "sim800_script.h"
+#include "common.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -50,50 +52,6 @@ typedef struct
   uint16_t detected;
 } SearchResultTypedef;
 
-typedef struct
-{
-  AtFunctionTypedf preparation_fun;
-  char * string;
-}StingListTypedef;
-
-typedef struct
-{
-  AtCommandLineTypedef * queue[MAX_FLOW_CACHE];
-  uint16_t queue_lines[MAX_FLOW_CACHE];
-  uint16_t start;
-  uint16_t end;
-  uint8_t fill_status;
-  uint8_t flow_top;
-  AtCommandLineTypedef * list[MAX_FLOW_CACHE];
-  uint8_t active_index;
-  uint16_t lines[MAX_FLOW_CACHE];
-  uint16_t active_line[MAX_FLOW_CACHE];
-  uint16_t repeat_cnt[MAX_FLOW_CACHE];
-} AtCmdFlowTypedef;
-
-typedef struct
-{
-  char phone_number[SMS_QUEUE_DEPTH][PHONE_NUMBER_STR_LEN];
-  char queue[SMS_QUEUE_DEPTH][SMS_LEN];
-  uint16_t sms_len[SMS_QUEUE_DEPTH];
-  uint16_t start;
-  uint16_t end;
-  uint16_t fill_status;
-  uint8_t busy;
-} SmsOutQueueTypedef;
-
-typedef struct
-{
-  char phone_number[SMS_QUEUE_DEPTH][PHONE_NUMBER_STR_LEN];
-  char queue[SMS_QUEUE_DEPTH][SMS_LEN];
-  char date[SMS_QUEUE_DEPTH][SMS_DATE_STR_LEN];
-  char time[SMS_QUEUE_DEPTH][SMS_TIME_STR_LEN];
-  uint16_t sms_len[SMS_QUEUE_DEPTH];
-  uint16_t start;
-  uint16_t end;
-  uint16_t fill_status;
-} SmsInQueueTypedef;
-
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje funkcji wewnetrznych
@@ -106,17 +64,11 @@ static uint8_t AtCheckForErr(AtCommandLineTypedef * at_cmd, AtCommandParametersT
 static uint8_t AtCheckForUrc(AtCommandParametersTypedef *param, CircularBufferTypedef * cbuf, uint16_t limit);
 static uint8_t AtCheckForItr(AtCommandLineTypedef * at_cmd, AtCommandParametersTypedef * param, CircularBufferTypedef * cbuf, uint16_t limit);
 static AtCommandLineTypedef * GetAtCmdFromFlow(AtCmdFlowTypedef * at_flow);
-static uint8_t PutAtCmdListToFlow(AtCommandLineTypedef * at_list, uint16_t list_lines, AtCmdFlowTypedef * at_flow);
 static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore, AtCmdFlowTypedef * at_flow, uint8_t at_state);
 static uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef * param, CircularBufferTypedef * cbuf);
 static uint16_t AtReciever(CircularBufferTypedef * cbuf);
-static uint8_t PutNumberToStream(uint32_t number, AtCommandParametersTypedef * v);
-static uint8_t PutStringToStream(char * string, AtCommandParametersTypedef * v);
-static uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * index);
-static char * GetStringFromStream(uint16_t * string_len, AtCommandParametersTypedef * v, uint16_t * index);
 static void NextStateWithDelay(uint8_t * state, uint8_t next_state, uint32_t delay);
 static void StateWait(uint8_t * state);
-static uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * index);
 static uint16_t CopyFromCircularBuffer(CircularBufferTypedef * cbuf, uint8_t * buffer, uint16_t len);
 static void RestorAtFlow(AtCmdFlowTypedef * at_flow);
 static uint32_t GetTick(void);
@@ -133,38 +85,32 @@ Definicje stalych
 Definicje zmiennych
 */
 static AtCommandParametersTypedef at_cmd_param;
-
 static uint32_t cmd_time_interval;
 static uint32_t cmd_delay_timeout;
 static uint32_t cmd_delay_period;
 static uint32_t cmd_timeout;
-
 static uint8_t modem_state = MODEM_INIT;
 static uint8_t modem_next_state = MODEM_INIT;
-
 static AtCmdFlowTypedef at_cmd_flow;
 static CircularBufferTypedef at_cbuf;
-
 static char circular_buffer[_CIRCULAR_BUFFER_LEN ];
 static char at_out_buf[_AT_CMD_BUFFER_LEN];
-
 static uint32_t modem_wait_timeout[2];
-
 static uint8_t search_bytes[2];
 static uint8_t itr_status = TRUE;
 static AtCommandLineTypedef * at_cmd;
-
 static ModemStatusTypedef modem_status;
 static uint8_t  at_state = AT_IDLE;
 static uint16_t recieve_len;
-
-static Flags8bitTypedef gsm_flags;
 static uint8_t prev_top_flow = 0;
-
-static SmsOutQueueTypedef sms_out_queue;
-static SmsInQueueTypedef sms_in_queue;
-
 static UartParametersTypedef modem_handle;
+static AtScriptInitTypedef scripts;
+static ModemStatusTypedef modem_status;
+static uint8_t * sms_buffer_ptr;
+static uint16_t sms_len;
+
+Flags8bitTypedef gsm_flags;
+
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Funkcje
@@ -178,7 +124,8 @@ void ModemRsInit(void)
 {
   // konfigurujemy odbior danych
   UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
-  SerialPortConfig(&modem_handle, B115200, "/dev/ttyS0");
+  SerialPortConfig(&modem_handle, B115200, MODEM_UART);
+  Sim800InitScript(&scripts, &at_cmd_flow, &modem_status);
 }
 
 /**
@@ -230,24 +177,22 @@ void ModemGsmModule(void)
 
       // reset zmiennych od wyszukiwania delimitera
       memset(search_bytes, 0, sizeof(search_bytes));
-      // resetowanie kolejki SMS
-      memset(&sms_out_queue, 0, sizeof(sms_out_queue));
       // resetowanie sterowania komendami AT
       memset(&at_cmd_flow, 0, sizeof(at_cmd_flow));
       // ladujemy pierwsza komende
-      PutAtCmdListToFlow((AtCommandLineTypedef*)at_commands_list, _NumOfRows(at_commands_list), &at_cmd_flow);
+      PutAtCmdListToFlow(scripts.base->cmd_list, scripts.base->cmd_num, &at_cmd_flow);
       modem_state = MODEM_PWR_KEY;
       break;
 
     case MODEM_PWR_KEY:
       // Ustwiamy power key w stan niski aby uruchomic modem
-      //GpioWritePin(PWR_KEY_GPIO, PWR_KEY, 1);
+      GpioWrite(PWR_KEY_GPIO, PWR_KEY, 1);
       NextStateWithDelay(&modem_state, MODEM_PWR_KEY_RELEASE, _PWR_KEY_LOW_STATE_TIMEOUT);
       break;
 
     case MODEM_PWR_KEY_RELEASE:
       // zwalniamy power key
-      //GpioWritePin(PWR_KEY_GPIO, PWR_KEY, 0);
+      GpioWrite(PWR_KEY_GPIO, PWR_KEY, 0);
       NextStateWithDelay(&modem_state, MODEM_RUN, _PWR_KEY_RELEASE_TIMEOUT);
       UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
       break;
@@ -301,47 +246,7 @@ static void StateWait(uint8_t * state)
  */
 void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len)
 {
-  if ((len + 1) > SMS_LEN) return;
 
-  // sprawdzamy czy jest najpierw miejsce w kolejce
-  if (sms_out_queue.fill_status >= SMS_QUEUE_DEPTH)
-    return;
-
-  memset(sms_out_queue.phone_number[sms_out_queue.end], 0, PHONE_NUMBER_STR_LEN);
-  memcpy(sms_out_queue.phone_number[sms_out_queue.end], phone_number, PHONE_NUMBER_LEN);
-
-  memcpy(sms_out_queue.queue[sms_out_queue.end], sms, len);
-  sms_out_queue.queue[sms_out_queue.end][len] = _CTRL_Z;
-  sms_out_queue.sms_len[sms_out_queue.end] = len + 1;
-
-  sms_out_queue.fill_status++;
-
-  IncrementIndex(&sms_out_queue.end, 1, SMS_QUEUE_DEPTH);
-}
-
-/**
- * @brief
- *
- */
-uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text)
-{
-  if (sms_in_queue.fill_status)
-  {
-    memset(phone_number, 0, PHONE_NUMBER_STR_LEN);
-    memset(date, 0, DATE_STR_LEN);
-    memset(text, 0, SMS_LEN);
-
-    memcpy(phone_number, sms_in_queue.phone_number[sms_in_queue.start], PHONE_NUMBER_LEN);
-    memcpy(date, sms_in_queue.date,SMS_DATE_LEN);
-    date[SMS_DATE_LEN] = ' ';
-    memcpy(&date[SMS_DATE_STR_LEN], sms_in_queue.time[sms_in_queue.start], SMS_TIME_LEN);
-    memcpy(text, sms_in_queue.queue[sms_in_queue.start], sms_in_queue.sms_len[sms_in_queue.start]);
-
-    sms_in_queue.fill_status--;
-    IncrementIndex(&sms_in_queue.start, 1, SMS_QUEUE_DEPTH);
-    return RETURN_SUCCESS;
-  }
-  return RETURN_FAILURE;
 }
 
 /**
@@ -350,11 +255,7 @@ uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text)
  */
 static void SendSms(void)
 {
-  if (sms_out_queue.fill_status && !sms_out_queue.busy)
-  {
-    sms_out_queue.busy = 1;
-    PutAtCmdListToFlow((AtCommandLineTypedef*)at_sms_send, _NumOfRows(at_sms_send), &at_cmd_flow);
-  }
+  PutAtCmdListToFlow(scripts.sms_send->cmd_list, scripts.sms_send->cmd_num, &at_cmd_flow);
 }
 
 /**
@@ -365,10 +266,10 @@ static void SendSms(void)
  * @param at_flow    - kolejka rozkazow
  * @return uint8_t   - RETURN_SUCCESS lub RETURN_FAILURE
  */
-static uint8_t PutAtCmdListToFlow(AtCommandLineTypedef * at_list, uint16_t list_lines, AtCmdFlowTypedef * at_flow)
+uint8_t PutAtCmdListToFlow(const AtCommandLineTypedef * at_list, uint16_t list_lines, AtCmdFlowTypedef * at_flow)
 {
   if (at_flow->fill_status >= MAX_FLOW_CACHE) return RETURN_FAILURE;
-  at_flow->queue[at_flow->end] = at_list;
+  at_flow->queue[at_flow->end] = (AtCommandLineTypedef *) at_list;
   at_flow->queue_lines[at_flow->end] = list_lines;
   at_flow->fill_status++;
   IncrementIndex(&at_flow->end, 1, MAX_FLOW_CACHE);
@@ -534,7 +435,7 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
  * @param v           - wskaznik na bufor parametrow
  * @return uint8_t    - RETURN_FAILURE badz RETURN_SUCCESS
  */
-static uint8_t PutNumberToStream(uint32_t number, AtCommandParametersTypedef * v)
+uint8_t PutNumberToStream(uint32_t number, AtCommandParametersTypedef * v)
 {
   if ((v->filling + 5) >= v->size) return RETURN_FAILURE;
 
@@ -554,7 +455,7 @@ static uint8_t PutNumberToStream(uint32_t number, AtCommandParametersTypedef * v
  * @param v           - wskaznik na bufor parametrow
  * @return uint8_t    - RETURN_FAILURE badz RETURN_SUCCESS
  */
-static uint8_t PutStringToStream(char * string, AtCommandParametersTypedef * v)
+uint8_t PutStringToStream(char * string, AtCommandParametersTypedef * v)
 {
   uint16_t len_index;
   char src_char;
@@ -595,7 +496,7 @@ static uint8_t PutStringToStream(char * string, AtCommandParametersTypedef * v)
  * @param v
  * @return uint32_t
  */
-static uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * index)
+uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * index)
 {
   uint32_t number = 0;
   uint16_t i;
@@ -621,7 +522,7 @@ static uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * i
  * @param v         - wskaznik na bufor parametrow
  * @return uint32_t - odczytana liczba
  */
-static char * GetStringFromStream(uint16_t * string_len, AtCommandParametersTypedef * v, uint16_t * index)
+char * GetStringFromStream(uint16_t * string_len, AtCommandParametersTypedef * v, uint16_t * index)
 {
   uint16_t i;
   uint16_t len = 0;
@@ -1035,7 +936,8 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
         // obsluga prompta np. wyslanie SMS
         if (_PROMPT == search_result.detected)
         {
-          UartWrite(&modem_handle, (uint8_t *)sms_out_queue.queue[sms_out_queue.start], sms_out_queue.sms_len[sms_out_queue.start]);
+          if (NULL != sms_buffer_ptr)
+            UartWrite(&modem_handle, sms_buffer_ptr, sms_len);
         }
         // Cos odebralismy, sprawdzmy co
         else if (_CRLF == search_result.detected && search_result.limit)
@@ -1055,10 +957,8 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
             else if (EXPECTED_SMS)
             {
               EXPECTED_SMS = 0;
-              CopyFromCircularBuffer(cbuf, (uint8_t *)sms_in_queue.queue[sms_in_queue.end], search_result.limit);
-              sms_in_queue.sms_len[sms_in_queue.end] = search_result.limit;
-              sms_in_queue.fill_status++;
-              IncrementIndex(&sms_in_queue.end, 1, SMS_QUEUE_DEPTH);
+              if (NULL != sms_buffer_ptr)
+                CopyFromCircularBuffer(cbuf, sms_buffer_ptr, search_result.limit);
             }
             else if (at_cmd->reference_string_in != NULL)
             {
@@ -1093,7 +993,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
       if ((_MS_TICK - cmd_time_interval) > _CMD_TIME_INTERVAL)
       {
         param->filling = 0;
-        if (at_cmd->preparation_fun != NULL) at_cmd->preparation_fun(AT_SEND_STAGE, param);
+        if (at_cmd->fun != NULL) at_cmd->fun(AT_SEND_STAGE, param);
         len = AtCmdCreateString(at_cmd->reference_string_out, at_out_buf, sizeof(at_out_buf), param);
         cmd_timeout = _MS_TICK;
         at_state = AT_RESPONSE;
@@ -1143,9 +1043,9 @@ static uint8_t AtCheckForOk(AtCommandLineTypedef *at_cmd, AtCommandParametersTyp
 {
   if (TRUE == AtCmdParseString("OK", cbuf, limit, param))
   {
-    if (at_cmd->preparation_fun != NULL)
+    if (at_cmd->fun != NULL)
     {
-      at_cmd->preparation_fun(AT_OK_STAGE, param);
+      at_cmd->fun(AT_OK_STAGE, param);
     }
     return TRUE;
   }
@@ -1164,13 +1064,14 @@ static uint8_t AtCheckForOk(AtCommandLineTypedef *at_cmd, AtCommandParametersTyp
 static uint8_t AtCheckForErr(AtCommandLineTypedef * at_cmd, AtCommandParametersTypedef * param, CircularBufferTypedef * cbuf, uint16_t limit)
 {
   uint8_t i;
-  for (i = 0; i < _NumOfRows(ErrorList); i++)
+
+  for (i = 0; i < scripts.error->cmd_num; i++)
   {
-    if (TRUE == AtCmdParseString(ErrorList[i].string, cbuf, limit, param))
+    if (TRUE == AtCmdParseString(scripts.error->str_lis[i].string, cbuf, limit, param))
     {
-      if (at_cmd->preparation_fun != NULL)
+      if (at_cmd->fun != NULL)
       {
-        at_cmd->preparation_fun(AT_ERROR_STAGE, param);
+        at_cmd->fun(AT_ERROR_STAGE, param);
       }
       return TRUE;
     }
@@ -1190,13 +1091,13 @@ static uint8_t AtCheckForErr(AtCommandLineTypedef * at_cmd, AtCommandParametersT
 static uint8_t AtCheckForUrc(AtCommandParametersTypedef * param, CircularBufferTypedef *cbuf, uint16_t limit)
 {
   uint8_t i;
-  for (i = 0; i < _NumOfRows(UrcList); i++)
+  for (i = 0; i < scripts.urc->cmd_num; i++)
   {
-    if (TRUE == AtCmdParseString(UrcList[i].string, cbuf, limit, param))
+    if (TRUE == AtCmdParseString(scripts.urc->str_lis[i].string, cbuf, limit, param))
     {
-      if (UrcList[i].preparation_fun != NULL)
+      if (scripts.urc->str_lis[i].fun != NULL)
       {
-        UrcList[i].preparation_fun(AT_URC_STAGE, param);
+        scripts.urc->str_lis[i].fun(AT_URC_STAGE, param);
       }
       return TRUE;
     }
@@ -1217,9 +1118,9 @@ static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTy
 {
   if (TRUE == AtCmdParseString(at_cmd->reference_string_in, cbuf, limit, param))
   {
-    if (at_cmd->preparation_fun != NULL)
+    if (at_cmd->fun != NULL)
     {
-      at_cmd->preparation_fun(AT_ITR_STAGE, param);
+      at_cmd->fun(AT_ITR_STAGE, param);
     }
     return TRUE;
   }

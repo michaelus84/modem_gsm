@@ -1,25 +1,20 @@
 /*
- * modem_gsm.h
+ * sim800_script.h
  *
  *  Created on: 9 lip 2019
  *      Author: msk
  */
 
-#ifndef __AT_ENGINE_H
-#define __AT_ENGINE_H
+#ifndef __SIM800_SCRIPT_H
+#define __SIM800_SCRIPT_H
 
-#include <stdint.h>
+#include "at_common_def.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje prprocesora
 */
 
-#define SMS_QUEUE_DEPTH                    20
-
-#define EXPECTED_SMS                       gsm_flags.flag.f0
-#define MODEM_GSM_SMS_SEND_OK              gsm_flags.flag.f1
-#define MODEM_GSM_SMS_SEND_ER              gsm_flags.flag.f2
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -28,11 +23,15 @@ Definicje typow
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
+Definicje zmiennych
+*/
+
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
 Definicje Funkcje
 */
-void ModemRsInit(void);
-void ModemGsmModule(void);
-void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len);
-uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text);
 
-#endif /* MODEM_GSM_H_ */
+void Sim800InitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status);
+
+
+#endif /* __SIM800_SCRIPT_H */

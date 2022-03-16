@@ -13,6 +13,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
+					<Add option="-DDEBUG" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
@@ -36,12 +37,18 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="at_engine.h" />
+		<Unit filename="common.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="common.h" />
+		<Unit filename="def.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="sim800_script.c">
 			<Option compilerVar="CC" />
 		</Unit>
+		<Unit filename="sim800_script.h" />
 		<Unit filename="uart.c">
 			<Option compilerVar="CC" />
 		</Unit>
