@@ -4,9 +4,9 @@
 
 #include "at_engine.h"
 
-int main()
+int main(void)
 {
-  ModemRsInit();
+  ModemInit();
 
   while(1)
   {

@@ -71,8 +71,6 @@ static void NextStateWithDelay(uint8_t * state, uint8_t next_state, uint32_t del
 static void StateWait(uint8_t * state);
 static uint16_t CopyFromCircularBuffer(CircularBufferTypedef * cbuf, uint8_t * buffer, uint16_t len);
 static void RestorAtFlow(AtCmdFlowTypedef * at_flow);
-static uint32_t GetTick(void);
-static void SendSms(void);
 static void CircularBufferInit(CircularBufferTypedef * cbuf);
 
 /*
@@ -111,6 +109,7 @@ static uint16_t sms_len;
 
 Flags8bitTypedef gsm_flags;
 
+
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Funkcje
@@ -120,7 +119,7 @@ Funkcje
  * @brief
  *
  */
-void ModemRsInit(void)
+void ModemInit(void)
 {
   // konfigurujemy odbior danych
   UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
@@ -128,18 +127,7 @@ void ModemRsInit(void)
   Sim800InitScript(&scripts, &at_cmd_flow, &modem_status);
 }
 
-/**
- * @brief Funkcja zwracajaca licznik milisekund
- *
- * @return uint32_t
- */
-static uint32_t GetTick(void)
-{
-  struct timeval tp;
-  gettimeofday(&tp, NULL);
-  uint32_t ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
-  return ms;
-}
+
 
 /**
  * @brief Inicjalizacja bufora okreznego
@@ -253,7 +241,7 @@ void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len)
  * @brief Funkcja od wyslania SMS-a
  *
  */
-static void SendSms(void)
+void SendSms(void)
 {
   PutAtCmdListToFlow(scripts.sms_send->cmd_list, scripts.sms_send->cmd_num, &at_cmd_flow);
 }
@@ -286,7 +274,6 @@ uint8_t PutAtCmdListToFlow(const AtCommandLineTypedef * at_list, uint16_t list_l
 static AtCommandLineTypedef * GetAtCmdFromFlow(AtCmdFlowTypedef * at_flow)
 {
   AtCommandLineTypedef * at_cmd = NULL;
-
 
   if (at_flow->fill_status)
   {
@@ -357,7 +344,7 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
 
   do
   {
-    switch(behaviore)
+    switch (behaviore)
     {
       // Po prostu idziemy dalej
       case DEFAULT:
@@ -378,7 +365,8 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
       case JUMP:
         for (i = 0; i < at_flow->lines[index]; i++)
         {
-          if (at_flow->list[index][i].label == at_line->aux_a) break;
+          if (at_flow->list[index][i].label == at_line->aux_a)
+            break;
         }
         if (i < at_flow->lines[index])
         {
@@ -421,128 +409,11 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
         }
         break;
     }
-  }while(0);
+  } while(0);
 
   if (at_line->aux_a != REPEAT_UNTIL) at_flow->repeat_cnt[index] = 0;
 
   return RETURN_SUCCESS;
-}
-
-/**
- * @brief Funkcja wstawiajaca wartosc numeryczna do strumienia wartosci dla komend AT
- *
- * @param value       - wartosc to wpisania do bufora parametrow
- * @param v           - wskaznik na bufor parametrow
- * @return uint8_t    - RETURN_FAILURE badz RETURN_SUCCESS
- */
-uint8_t PutNumberToStream(uint32_t number, AtCommandParametersTypedef * v)
-{
-  if ((v->filling + 5) >= v->size) return RETURN_FAILURE;
-
-  v->parameters[v->filling++] = TAG_NUMBER;
-  v->parameters[v->filling++] = number >> 24;
-  v->parameters[v->filling++] = number >> 16;
-  v->parameters[v->filling++] = number >> 8;
-  v->parameters[v->filling++] = number >> 0;
-
-  return RETURN_SUCCESS;
-}
-
-/**
- * @brief Funkcja wstawiajaca wartosc znakowa do strumienia wartosci dla komend AT
- *
- * @param value       - wartosc to wpisania do bufora parametrow
- * @param v           - wskaznik na bufor parametrow
- * @return uint8_t    - RETURN_FAILURE badz RETURN_SUCCESS
- */
-uint8_t PutStringToStream(char * string, AtCommandParametersTypedef * v)
-{
-  uint16_t len_index;
-  char src_char;
-  uint32_t number;
-
-  if ((v->filling + 3) >= v->size)
-    return RETURN_FAILURE;
-
-  v->parameters[v->filling++] = TAG_STRING;
-  len_index = v->filling;
-  v->filling += 2;
-
-  number = 0;
-  do
-  {
-    if (v->filling >= v->size) return RETURN_FAILURE;
-
-    src_char = *string;
-
-    if (!_IsVisibleChar(src_char)) break;
-
-    string++;
-
-    v->parameters[v->filling++] = src_char;
-    number++;
-
-  } while (_IsVisibleChar(src_char));
-
-  v->parameters[len_index++] = number >> 8;
-  v->parameters[len_index] = number;
-
-  return RETURN_SUCCESS;
-}
-
-/**
- * @brief Pobranie liczby z bufora parametrow
- *
- * @param v
- * @return uint32_t
- */
-uint32_t GetNumberFromStream(AtCommandParametersTypedef * v, uint16_t * index)
-{
-  uint32_t number = 0;
-  uint16_t i;
-
-  i = *index;
-
-  if ((v->filling + i) < 5) return number;
-
-  if (TAG_NUMBER != v->parameters[i++]) return number;
-
-  number  = (uint32_t)v->parameters[i++] << 24;
-  number |= (uint32_t)v->parameters[i++] << 16;
-  number |= (uint32_t)v->parameters[i++] << 8;
-  number |= (uint32_t)v->parameters[i++];
-
-  *index = i;
-  return number;
-}
-
-/**
- * @brief
- *
- * @param v         - wskaznik na bufor parametrow
- * @return uint32_t - odczytana liczba
- */
-char * GetStringFromStream(uint16_t * string_len, AtCommandParametersTypedef * v, uint16_t * index)
-{
-  uint16_t i;
-  uint16_t len = 0;
-
-  i = *index;
-
-  *string_len = 0;
-
-  if ((v->filling + i) < 3) return NULL;
-  if (TAG_STRING != v->parameters[i++]) return NULL;
-
-  len  = (uint16_t)v->parameters[i++] << 8;
-  len |= (uint16_t)v->parameters[i++];
-
-  if ((v->filling + i) < len) return NULL;
-
-  *index = i + len;
-
-  *string_len = len;
-  return (char *)(&v->parameters[i]);
 }
 
 /**
@@ -621,7 +492,7 @@ static SearchResultTypedef SearchForDelimiterOrPrompt(CircularBufferTypedef *cbu
  * @param parameters       - parmetry do wlaczenia w ciag AT
  * @return                 - dlugosc utworzonego ciagu AT
  */
-uint16_t AtCmdCreateString(char *reference_string, char * buffer, uint16_t buffer_size, AtCommandParametersTypedef * parameters)
+uint16_t AtCmdCreateString(char * reference_string, char * buffer, uint16_t buffer_size, AtCommandParametersTypedef * parameters)
 {
   uint16_t i = 0;
   uint16_t index = 0;
@@ -916,8 +787,6 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
   SearchResultTypedef search_result;
   uint16_t len;
 
-  SendSms();
-
   // komende mozemy pobrac kiedy zadna komenda nie jset obslugiwana
   if (AT_IDLE == at_state)
   {
@@ -995,9 +864,17 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
         param->filling = 0;
         if (at_cmd->fun != NULL) at_cmd->fun(AT_SEND_STAGE, param);
         len = AtCmdCreateString(at_cmd->reference_string_out, at_out_buf, sizeof(at_out_buf), param);
-        cmd_timeout = _MS_TICK;
-        at_state = AT_RESPONSE;
-        UartWrite(&modem_handle, (uint8_t *)at_out_buf, len);
+        if (len > 0)
+        {
+          cmd_timeout = _MS_TICK;
+          at_state = AT_RESPONSE;
+          UartWrite(&modem_handle, (uint8_t *)at_out_buf, len);
+        }
+        else
+        {
+          _DebugPrintf("AT cmommand lengh = 0\n");
+          at_state = AT_IDLE;
+        }
       }
       break;
 

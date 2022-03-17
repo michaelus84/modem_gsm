@@ -7,7 +7,37 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <stdlib.h>
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje prprocesora - lokalna
+*/
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje typow lokalnych
+*/
 
+
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje funkcji wewnetrznych
+*/
+
+
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje stalych
+*/
+
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje zmiennych
+*/
+
+
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Funkcje
+*/
 
 /**
  * Funkcja od zwiekszenia indeksu bufora
@@ -45,6 +75,7 @@ void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
 
   if (fd < 0)
   {
+    _DebugPrintf("%s: open gpio failed\n", __func__);
     return;
   }
 
@@ -54,12 +85,16 @@ void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
 
   if (ioctl(fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
   {
+    _DebugPrintf("%s: config gpio failed\n", __func__);
     close(request.fd);
     return;
   }
 
   data.values[0] = value;
-  ioctl(request.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data);
+  if (ioctl(request.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0)
+  {
+  _DebugPrintf("%s: write gpio failed\n", __func__);
+  }
 
   close(request.fd);
 }
@@ -81,6 +116,7 @@ uint8_t GpioRead(void * gpio, uint32_t pin)
 
   if (fd < 0)
   {
+    _DebugPrintf("%s: open gpio failed\n", __func__);
     return 0;
   }
 
@@ -90,16 +126,31 @@ uint8_t GpioRead(void * gpio, uint32_t pin)
 
   if (ioctl(fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
   {
+    _DebugPrintf("%s: config gpio failed\n", __func__);
     close(fd);
     return 0;
   }
 
   if (ioctl(request.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0)
   {
+    _DebugPrintf("%s: read gpio failed\n", __func__);
     data.values[0] = 0;
   };
 
   close(request.fd);
 
   return data.values[0];
+}
+
+/**
+ * @brief Funkcja zwracajaca licznik milisekund
+ *
+ * @return uint32_t
+ */
+uint32_t GetTick(void)
+{
+  struct timeval tp;
+  gettimeofday(&tp, NULL);
+  uint32_t ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+  return ms;
 }

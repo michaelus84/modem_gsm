@@ -32,6 +32,9 @@
 		<Compiler>
 			<Add option="-Wall" />
 		</Compiler>
+		<Unit filename="at_common.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="at_common_def.h" />
 		<Unit filename="at_engine.c">
 			<Option compilerVar="CC" />

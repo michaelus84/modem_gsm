@@ -27,12 +27,37 @@ Definicje prprocesora
 Definicje typow
 */
 
+typedef union 
+{
+  uint32_t addr;
+  struct 
+  {
+    uint8_t a;
+    uint8_t b;
+    uint8_t c;
+    uint8_t d;
+  };
+} Ipv4AddrTypedef;
+
 typedef struct
 {
   uint8_t csq;
   uint8_t reg;
   uint8_t sms_num;
+  Ipv4AddrTypedef ip;
 } ModemStatusTypedef;
+
+
+typedef struct
+{
+  unsigned int * item;
+  uint8_t label;
+} ParameterItemTypedef;
+typedef struct
+{
+  ParameterItemTypedef * list;
+  uint8_t num;
+} ParameterListTypedef;
 
 typedef struct
 {
@@ -108,6 +133,9 @@ enum
   LB_CREG,
   LB_CMGS,
   LB_CUSD,
+  LB_APN,
+  LB_IPR,
+  LB_IP,
 };
 
 typedef struct
@@ -115,8 +143,8 @@ typedef struct
   uint8_t label;
   uint16_t delay;
   uint16_t cmd_timeout;
-  char *reference_string_out;
-  char *reference_string_in;
+  char * reference_string_out;
+  char * reference_string_in;
   AtFunctionTypedf fun;
   uint8_t behaviore_err;
   uint8_t behaviore;

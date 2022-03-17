@@ -30,7 +30,7 @@ Definicje prprocesora
 
 #define IRQ_PIN                               3
 
-#define PWR_KEY                               1
+#define PWR_KEY                               18
 #define PWR_KEY_GPIO                          "/dev/gpiochip0"
 
 #define MODEM_UART                            "/dev/ttyS0"

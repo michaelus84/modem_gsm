@@ -20,10 +20,12 @@ Definicje funkcji wewnetrznych
 // funkcje wjscia/wyjsci na potrzeby komend AT
 static uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values);
+static uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtAccount(uint8_t stage, AtCommandParametersTypedef * values);
+static uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values);
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -58,15 +60,17 @@ static AtCommandStrListTypedef Sim800_Urc_List   = {UrcList   , _NumOfRows(UrcLi
  */
 static AtCommandLineTypedef const Sim800_At_Commands[] =
 {
-  {LB_EMPTY, 5,  3, ""                      , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // ustawiamy pelna funkconalnosc
-  {LB_ECHO,  0,  3, "E0"                    , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
-  {LB_CMEE,  0,  3, "+CMEE=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // numeryczny format bledu
-  {LB_CFUN,  5,180, "+CFUN=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // ustawiamy pelna funkconalnosc
-  {LB_CGAT,  0,180, "+CGATT=1"              , NULL          , NULL      , REBOOT, DEFAULT,      0, 0},  // rejestrcja do sieci
-//{LB_CMGF,  0,  3, "+CMGF=1"               , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // tekstowy format SMS-a
-//{LB_CSCS,  0,  3, "+CSCS=\"GSM\""         , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},
-  {LB_CSQ,   0,  3, "+CSQ"                  , "+CSQ: %d,%d" , &AtCsq    , IGNORE, DEFAULT,      0, 0},
-  {LB_CREG,  5,  3, "+CREG?"                , "+CREG: %d,%d", &AtReg    , JUMP  , JUMP,    LB_CSQ, 0}
+  {LB_EMPTY, 5,  3, ""                        , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
+  {LB_ECHO,  0,  3, "E0"                      , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
+  {LB_IPR,   0,  3, "+IPR=115200"             , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
+  {LB_CMEE,  0,  3, "+CMEE=1"                 , NULL                          , NULL      , IGNORE, EXIT,         0, 0},
+  {LB_CFUN,  5,180, "+CFUN=1"                 , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
+  {LB_APN,   0,  3, "+CGDCONT=1,\"IP\",\"%s\"", NULL                          , &AtApn    , IGNORE, DEFAULT,      0, 0},
+  {LB_CGAT,  0,180, "+CGATT=1"                , NULL                          , NULL      , REBOOT, DEFAULT,      0, 0},
+  {LB_CGAT,  0,180, "+CGACT=1,1"              , NULL                          , NULL      , REBOOT, DEFAULT,      0, 0},
+  {LB_CSQ,   0,  3, "+CSQ"                    , "+CSQ: %d,%d"                 , &AtCsq    , IGNORE, DEFAULT,      0, 0},
+  {LB_IP,    0,  3, "+CGPADDR=1"              , "+CGPADDR: 1,\"%d,%d,%d,%d\"" , &AtIpAddr , IGNORE, DEFAULT,      0, 0},
+  {LB_CREG,  5,  3, "+CREG?"                  , "+CREG: %d,%d"                , &AtReg    , JUMP  , JUMP,    LB_CSQ, 0}
 };
 
 /**
@@ -75,7 +79,7 @@ static AtCommandLineTypedef const Sim800_At_Commands[] =
  */
 static AtCommandLineTypedef const Sim800_At_Sms_Send[] =
 {
-  {       0, 0, 60, "+CMGS=\"%s\""          , "+CMGS: %d"   , &AtSmsSend, IGNORE, DEFAULT,      0, 0},  // wyslanie SMS-a
+  {0, 0, 60, "+CMGS=\"%s\""          , "+CMGS: %d"   , &AtSmsSend, IGNORE, DEFAULT,      0, 0},  // wyslanie SMS-a
 };
 
 static AtCommandLineTypedef const Sim800_At_Sms_Recieve[] =
@@ -206,6 +210,80 @@ static uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values)
   }
   return TRUE;
 }
+
+/**
+ * @brief
+ *
+ * @param stage
+ * @param values
+ * @return uint8_t
+ */
+static uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values)
+{
+  uint16_t index = 0;
+
+  switch (stage)
+  {
+    case AT_SEND_STAGE:
+
+      break;
+
+    case AT_ITR_STAGE:
+      modem_status->ip.a = GetNumberFromStream(values, &index);
+      modem_status->ip.b = GetNumberFromStream(values, &index);
+      modem_status->ip.c = GetNumberFromStream(values, &index);
+      modem_status->ip.d = GetNumberFromStream(values, &index);
+      break;
+
+    case AT_OK_STAGE:
+
+      break;
+
+    case AT_ERROR_STAGE:
+
+      break;
+
+    default:
+      break;
+  }
+  return TRUE;
+}
+
+/**
+ * @brief
+ *
+ * @param stage
+ * @param values
+ * @return uint8_t
+ */
+static uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values)
+{
+  char * str = "plus";
+
+  switch (stage)
+  {
+    case AT_SEND_STAGE:
+
+      break;
+
+    case AT_ITR_STAGE:
+      PutStringToStream(str, values);
+      break;
+
+    case AT_OK_STAGE:
+
+      break;
+
+    case AT_ERROR_STAGE:
+
+      break;
+
+    default:
+      break;
+  }
+  return TRUE;
+}
+
 /**
  * @brief
  *

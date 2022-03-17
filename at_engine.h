@@ -30,7 +30,7 @@ Definicje typow
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje Funkcje
 */
-void ModemRsInit(void);
+void ModemInit(void);
 void ModemGsmModule(void);
 void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len);
 uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text);
