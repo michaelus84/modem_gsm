@@ -7,6 +7,9 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <stdlib.h>
+#if defined(WIRING_PI)
+#include <wiringPi.h>
+#endif
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje prprocesora - lokalna
@@ -61,11 +64,28 @@ void IncrementIndex(uint16_t * index_ptr, uint16_t pin, uint16_t range)
 /**
  * @brief 
  * 
+ */
+uint8_t GpioInit(void)
+{
+  #if defined(WIRING_PI)
+  if (wiringPiSetup() < 0)
+    return RETURN_FAILURE;
+  pinMode (PWR_KEY, OUTPUT);
+  #endif
+  return RETURN_SUCCESS;
+}
+
+/**
+ * @brief 
+ * 
  * @param pin 
  * @param value 
  */
 void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
 {
+  #if defined(WIRING_PI)
+  digitalWrite(pin, value);
+  #else
   struct gpiohandle_request request;
   struct gpiohandle_data data;
 
@@ -86,17 +106,19 @@ void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
   if (ioctl(fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
   {
     _DebugPrintf("%s: config gpio failed\n", __func__);
-    close(request.fd);
+    close(fd);
     return;
   }
 
   data.values[0] = value;
   if (ioctl(request.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0)
   {
-  _DebugPrintf("%s: write gpio failed\n", __func__);
+    _DebugPrintf("%s: write gpio failed\n", __func__);
   }
 
   close(request.fd);
+  close(fd);
+  #endif
 }
 
 /**
@@ -107,6 +129,9 @@ void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
  */
 uint8_t GpioRead(void * gpio, uint32_t pin)
 {
+  #if defined(WIRING_PI)
+  return digitalRead(pin);
+  #else
   struct gpiohandle_request request;
   struct gpiohandle_data data;
 
@@ -138,8 +163,10 @@ uint8_t GpioRead(void * gpio, uint32_t pin)
   };
 
   close(request.fd);
+  close(fd);
 
   return data.values[0];
+  #endif
 }
 
 /**

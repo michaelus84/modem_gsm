@@ -15,12 +15,6 @@
 Definicje prprocesora
 */
 
-#define SMS_QUEUE_DEPTH                    20
-
-#define EXPECTED_SMS                       gsm_flags.flag.f0
-#define MODEM_GSM_SMS_SEND_OK              gsm_flags.flag.f1
-#define MODEM_GSM_SMS_SEND_ER              gsm_flags.flag.f2
-
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow
@@ -31,8 +25,11 @@ Definicje typow
 Definicje Funkcje
 */
 void ModemInit(void);
+void ModemClosePort(void);
 void ModemGsmModule(void);
 void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len);
 uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text);
+uint8_t ModemGsmReady(void);
+
 
 #endif /* MODEM_GSM_H_ */

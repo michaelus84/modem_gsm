@@ -20,8 +20,10 @@
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje prprocesora
 */
-
-
+#define EXPECTED_SMS                       gsm_flags.flag.f0
+#define MODEM_GSM_SMS_SEND_OK              gsm_flags.flag.f1
+#define MODEM_GSM_SMS_SEND_ER              gsm_flags.flag.f2
+#define BASE_CONFIG_DONE                   gsm_flags.flag.f3
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow

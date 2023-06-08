@@ -11,6 +11,12 @@ int main(void)
   while(1)
   {
     ModemGsmModule();
+    if (ModemGsmReady())
+    {
+      printf("Modem GSM ready\n");
+      ModemClosePort();
+      return 0;
+    }
     usleep(1000);
   }
   return 0;

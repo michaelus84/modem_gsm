@@ -109,6 +109,9 @@ static uint16_t sms_len;
 
 Flags8bitTypedef gsm_flags;
 
+#if defined(DEBUG)
+uint8_t modem_running = 0;
+#endif
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -125,9 +128,17 @@ void ModemInit(void)
   UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
   SerialPortConfig(&modem_handle, B115200, MODEM_UART);
   Sim800InitScript(&scripts, &at_cmd_flow, &modem_status);
+  GpioInit();
 }
 
-
+/**
+ * @brief 
+ * 
+ */
+void ModemClosePort(void)
+{
+  SerialPortClose(&modem_handle);
+}
 
 /**
  * @brief Inicjalizacja bufora okreznego
@@ -174,18 +185,30 @@ void ModemGsmModule(void)
 
     case MODEM_PWR_KEY:
       // Ustwiamy power key w stan niski aby uruchomic modem
+      _DebugPrintf("Power Key pull down\n");
       GpioWrite(PWR_KEY_GPIO, PWR_KEY, 1);
       NextStateWithDelay(&modem_state, MODEM_PWR_KEY_RELEASE, _PWR_KEY_LOW_STATE_TIMEOUT);
       break;
 
     case MODEM_PWR_KEY_RELEASE:
       // zwalniamy power key
+      _DebugPrintf("Power Key release\n");
       GpioWrite(PWR_KEY_GPIO, PWR_KEY, 0);
       NextStateWithDelay(&modem_state, MODEM_RUN, _PWR_KEY_RELEASE_TIMEOUT);
       UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
+      #if defined(DEBUG)
+      modem_running = 0;
+      #endif
       break;
 
     case MODEM_RUN:
+      #if defined(DEBUG)
+      if (!modem_running)
+      {
+        modem_running = 1;
+        _DebugPrintf("Start AT sequence\n");
+      }
+      #endif
       // wlasciwa obsluga modemu
       if (RETURN_FAILURE == AtCmdSequence(&at_cmd_flow, &at_cmd_param, &at_cbuf))
       {
@@ -1002,4 +1025,15 @@ static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTy
     return TRUE;
   }
   return FALSE;
+}
+
+/**
+ * @brief Funkcja informujaca ze modem jest gotowy do pracy
+ * 
+ * @return uint8_t TRUE  - modem gotowy
+ *                 FALSE - modem nie gotowy
+ */
+uint8_t ModemGsmReady(void)
+{
+  return BASE_CONFIG_DONE;
 }

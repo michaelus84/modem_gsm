@@ -58,11 +58,11 @@ void SerialPortConfig(UartParametersTypedef * handle, uint32_t baudrate, char * 
 
   if (fd < 0)
   {
-    _DebugPrintf("Blad otwarcia portu\n");
+    printf("Open port error\n");
     exit(-1);
   }
 
-  _DebugPrintf("\nPort otwarty\n");
+  _DebugPrintf("\nPort open\n");
 
   handle->fd = fd;
 
@@ -76,6 +76,17 @@ void SerialPortConfig(UartParametersTypedef * handle, uint32_t baudrate, char * 
 
   tcsetattr(fd,TCSANOW, &config);
   tcflush(fd, TCIFLUSH);
+}
+
+/**
+ * @brief Construct a new Serial Port Close object
+ * 
+ * @param handle 
+ */
+void SerialPortClose(UartParametersTypedef * handle)
+{
+  _DebugPrintf("\nPort closed\n");
+  close(handle->fd);
 }
 
 /**

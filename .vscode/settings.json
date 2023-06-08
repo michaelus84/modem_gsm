@@ -4,6 +4,7 @@
       "at_common_def.h": "c",
       "sim800_script.H": "cpp",
       "def.h": "c",
-      "stddef.h": "c"
+      "stddef.h": "c",
+      "uart.h": "c"
     }
 }

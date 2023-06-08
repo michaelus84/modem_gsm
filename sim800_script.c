@@ -26,6 +26,7 @@ static uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtAccount(uint8_t stage, AtCommandParametersTypedef * values);
 static uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values);
+static uint8_t AtCmee(uint8_t stage, AtCommandParametersTypedef * values);
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -54,6 +55,12 @@ static StringListTypedef const UrcList[] =
 static AtCommandStrListTypedef Sim800_Error_List = {Error_List, _NumOfRows(Error_List)};
 static AtCommandStrListTypedef Sim800_Urc_List   = {UrcList   , _NumOfRows(UrcList)   };
 
+
+static AtCommandLineTypedef const Sim800_At_Check[] =
+{
+  {LB_EMPTY, 0,  3, ""                        , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
+};
+
 /**
  * @brief Lista komend AT do wyslania
  *
@@ -63,7 +70,7 @@ static AtCommandLineTypedef const Sim800_At_Commands[] =
   {LB_EMPTY, 5,  3, ""                        , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
   {LB_ECHO,  0,  3, "E0"                      , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
   {LB_IPR,   0,  3, "+IPR=115200"             , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
-  {LB_CMEE,  0,  3, "+CMEE=1"                 , NULL                          , NULL      , IGNORE, EXIT,         0, 0},
+  {LB_CMEE,  0,  3, "+CMEE=1"                 , NULL                          , &AtCmee   , IGNORE, DEFAULT,      0, 0},
   {LB_CFUN,  5,180, "+CFUN=1"                 , NULL                          , NULL      , IGNORE, DEFAULT,      0, 0},
   {LB_APN,   0,  3, "+CGDCONT=1,\"IP\",\"%s\"", NULL                          , &AtApn    , IGNORE, DEFAULT,      0, 0},
   {LB_CGAT,  0,180, "+CGATT=1"                , NULL                          , NULL      , REBOOT, DEFAULT,      0, 0},
@@ -237,6 +244,39 @@ static uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values)
 
     case AT_OK_STAGE:
 
+      break;
+
+    case AT_ERROR_STAGE:
+
+      break;
+
+    default:
+      break;
+  }
+  return TRUE;
+}
+
+/**
+ * @brief
+ *
+ * @param stage
+ * @param values
+ * @return uint8_t
+ */
+static uint8_t AtCmee(uint8_t stage, AtCommandParametersTypedef * values)
+{
+  switch (stage)
+  {
+    case AT_SEND_STAGE:
+
+      break;
+
+    case AT_ITR_STAGE:
+
+      break;
+
+    case AT_OK_STAGE:
+      BASE_CONFIG_DONE = 1;
       break;
 
     case AT_ERROR_STAGE:
