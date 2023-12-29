@@ -1,15 +1,15 @@
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 */
-#include "uart.h"
+#include "modem_gsm_uart.h"
 #include "at_engine.h"
 #include "at_common_def.h"
-#include "sim800_script.h"
+#include "at_script_common.h"
 #include "common.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
-Definicje prprocesora - lokalna
+Definicje preprocesora - lokalna
 */
 
 #define _CTRL_Z                           0x1A
@@ -33,7 +33,6 @@ Definicje prprocesora - lokalna
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow lokalnych
 */
-
 
 typedef struct
 {
@@ -97,16 +96,12 @@ static uint32_t modem_wait_timeout[2];
 static uint8_t search_bytes[2];
 static uint8_t itr_status = TRUE;
 static AtCommandLineTypedef * at_cmd;
-static ModemStatusTypedef modem_status;
 static uint8_t  at_state = AT_IDLE;
 static uint16_t recieve_len;
 static uint8_t prev_top_flow = 0;
 static UartParametersTypedef modem_handle;
 static AtScriptInitTypedef scripts;
 static ModemStatusTypedef modem_status;
-static uint8_t * sms_buffer_ptr;
-static uint16_t sms_len;
-
 Flags8bitTypedef gsm_flags;
 
 #if defined(DEBUG)
@@ -125,15 +120,15 @@ Funkcje
 void ModemInit(void)
 {
   // konfigurujemy odbior danych
-  UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
-  SerialPortConfig(&modem_handle, B115200, MODEM_UART);
-  Sim800InitScript(&scripts, &at_cmd_flow, &modem_status);
-  GpioInit();
+  //UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
+  //SerialPortConfig(&modem_handle, 115200, MODEM_UART);
+  //AtModemInitScript(&scripts, &at_cmd_flow, &modem_status);
+  //GpioInit(PWR_KEY);
 }
 
 /**
- * @brief 
- * 
+ * @brief
+ *
  */
 void ModemClosePort(void)
 {
@@ -185,14 +180,14 @@ void ModemGsmModule(void)
 
     case MODEM_PWR_KEY:
       // Ustwiamy power key w stan niski aby uruchomic modem
-      _DebugPrintf("Power Key pull down\n");
+      _DP("Power Key pull down\n");
       GpioWrite(PWR_KEY_GPIO, PWR_KEY, 1);
       NextStateWithDelay(&modem_state, MODEM_PWR_KEY_RELEASE, _PWR_KEY_LOW_STATE_TIMEOUT);
       break;
 
     case MODEM_PWR_KEY_RELEASE:
       // zwalniamy power key
-      _DebugPrintf("Power Key release\n");
+      _DP("Power Key release\n");
       GpioWrite(PWR_KEY_GPIO, PWR_KEY, 0);
       NextStateWithDelay(&modem_state, MODEM_RUN, _PWR_KEY_RELEASE_TIMEOUT);
       UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
@@ -206,7 +201,7 @@ void ModemGsmModule(void)
       if (!modem_running)
       {
         modem_running = 1;
-        _DebugPrintf("Start AT sequence\n");
+        _DP("Start AT sequence\n");
       }
       #endif
       // wlasciwa obsluga modemu
@@ -279,11 +274,11 @@ void SendSms(void)
  */
 uint8_t PutAtCmdListToFlow(const AtCommandLineTypedef * at_list, uint16_t list_lines, AtCmdFlowTypedef * at_flow)
 {
-  if (at_flow->fill_status >= MAX_FLOW_CACHE) return RETURN_FAILURE;
-  at_flow->queue[at_flow->end] = (AtCommandLineTypedef *) at_list;
-  at_flow->queue_lines[at_flow->end] = list_lines;
-  at_flow->fill_status++;
-  IncrementIndex(&at_flow->end, 1, MAX_FLOW_CACHE);
+  if (at_flow->queue.fill_status >= MAX_FLOW_CACHE) return RETURN_FAILURE;
+  at_flow->queue.buf[at_flow->queue.end] = (AtCommandLineTypedef *) at_list;
+  at_flow->queue.lines[at_flow->queue.end] = list_lines;
+  at_flow->queue.fill_status++;
+  IncrementIndex(&at_flow->queue.end, 1, MAX_FLOW_CACHE);
 
   return RETURN_SUCCESS;
 }
@@ -298,24 +293,24 @@ static AtCommandLineTypedef * GetAtCmdFromFlow(AtCmdFlowTypedef * at_flow)
 {
   AtCommandLineTypedef * at_cmd = NULL;
 
-  if (at_flow->fill_status)
+  if (at_flow->queue.fill_status)
   {
     if (at_flow->flow_top >= MAX_FLOW_CACHE) return NULL;
 
-    if (at_flow->flow_top) at_flow->active_index++;
+    if (at_flow->flow_top) at_flow->list.active++;
 
     at_flow->flow_top++;
-    at_flow->fill_status--;
+    at_flow->queue.fill_status--;
 
-    at_flow->list[at_flow->active_index] = at_flow->queue[at_flow->start];
-    at_flow->lines[at_flow->active_index] = at_flow->queue_lines[at_flow->start];
-    at_flow->active_line[at_flow->active_index] = 0;
-    IncrementIndex(&at_flow->start, 1, MAX_FLOW_CACHE);
+    at_flow->list.buf[at_flow->list.active] = at_flow->queue.buf[at_flow->queue.start];
+    at_flow->list.lines[at_flow->list.active] = at_flow->queue.lines[at_flow->queue.start];
+    at_flow->list.active_line[at_flow->list.active] = 0;
+    IncrementIndex(&at_flow->queue.start, 1, MAX_FLOW_CACHE);
   }
 
   if (at_flow->flow_top)
   {
-    at_cmd = &at_flow->list[at_flow->active_index][at_flow->active_line[at_flow->active_index]];
+    at_cmd = &at_flow->list.buf[at_flow->list.active][at_flow->list.active_line[at_flow->list.active]];
   }
 
   return at_cmd;
@@ -332,13 +327,13 @@ static void RestorAtFlow(AtCmdFlowTypedef * at_flow)
   if (at_flow->flow_top)
   {
     //Sprawdzamy czy osiagnelismy koniec skryptu
-    if (at_flow->active_line[at_flow->active_index] >= at_flow->lines[at_flow->active_index])
+    if (at_flow->list.active_line[at_flow->list.active] >= at_flow->list.lines[at_flow->list.active])
     {
       at_flow->flow_top--;
       if (at_flow->flow_top)
       {
         // jesli cos pozostalo to schodzmimy pietro nizej na liscie
-        at_flow->active_index--;
+        at_flow->list.active--;
       }
     }
   }
@@ -360,7 +355,7 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
 
   if (!at_flow->flow_top) return RETURN_FAILURE;
 
-  index = at_flow->active_index;
+  index = at_flow->list.active;
 
   cmd_delay_timeout = _MS_TICK;
   cmd_delay_period = at_line->delay * 1000;
@@ -372,37 +367,37 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
       // Po prostu idziemy dalej
       case DEFAULT:
       case IGNORE:
-        if (at_flow->active_line[index] < at_flow->lines[index])
-          at_flow->active_line[index]++;
+        if (at_flow->list.active_line[index] < at_flow->list.lines[index])
+          at_flow->list.active_line[index]++;
       break;
 
       // konczymy wykonywanie zestawu komend AT
       case EXIT:
-        at_flow->active_line[index] = at_flow->lines[index];
+        at_flow->list.active_line[index] = at_flow->list.lines[index];
         break;
       // wracamy na poczatek zestawu komend AT
       case REBOOT:
-        at_flow->active_line[index] = 0;
+        at_flow->list.active_line[index] = 0;
         break;
       // skok do okreslonej nazwy lini
       case JUMP:
-        for (i = 0; i < at_flow->lines[index]; i++)
+        for (i = 0; i < at_flow->list.lines[index]; i++)
         {
-          if (at_flow->list[index][i].label == at_line->aux_a)
+          if (at_flow->list.buf[index][i].label == at_line->action_a)
             break;
         }
-        if (i < at_flow->lines[index])
+        if (i < at_flow->list.lines[index])
         {
-          at_flow->active_line[index] = i;
+          at_flow->list.active_line[index] = i;
         }
         else
         {
-          at_flow->active_line[index] = 0;
+          at_flow->list.active_line[index] = 0;
         }
         break;
       // Powtarzanie pojednyjczej komendy
       case REPEAT_UNTIL:
-        switch(at_line->aux_a)
+        switch(at_line->action_a)
         {
           // Powtarzanie gdy dostajemy OK
           case OK:
@@ -422,9 +417,9 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
           break;
           // Powtarzanie okreslona liczbe razy
           case NUM:
-            if(++at_flow->repeat_cnt[index] > at_line->aux_a)
+            if(++at_flow->list.repeat_cnt[index] > at_line->action_a)
             {
-              at_flow->repeat_cnt[index] = 0;
+              at_flow->list.repeat_cnt[index] = 0;
               behaviore = DEFAULT;
               continue;
             }
@@ -434,7 +429,7 @@ static uint8_t ModifyAtCmdFlow(AtCommandLineTypedef * at_line, uint8_t behaviore
     }
   } while(0);
 
-  if (at_line->aux_a != REPEAT_UNTIL) at_flow->repeat_cnt[index] = 0;
+  if (at_line->action_a != REPEAT_UNTIL) at_flow->list.repeat_cnt[index] = 0;
 
   return RETURN_SUCCESS;
 }
@@ -828,8 +823,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
         // obsluga prompta np. wyslanie SMS
         if (_PROMPT == search_result.detected)
         {
-          if (NULL != sms_buffer_ptr)
-            UartWrite(&modem_handle, sms_buffer_ptr, sms_len);
+
         }
         // Cos odebralismy, sprawdzmy co
         else if (_CRLF == search_result.detected && search_result.limit)
@@ -849,10 +843,10 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
             else if (EXPECTED_SMS)
             {
               EXPECTED_SMS = 0;
-              if (NULL != sms_buffer_ptr)
-                CopyFromCircularBuffer(cbuf, sms_buffer_ptr, search_result.limit);
+              //if (NULL != sms_buffer_ptr)
+              //  CopyFromCircularBuffer(cbuf, sms_buffer_ptr, search_result.limit);
             }
-            else if (at_cmd->reference_string_in != NULL)
+            else if (at_cmd->ref_str_in != NULL)
             {
               // ITR jest sprawdzany jako ostani zachowujemy jego stan na potrzeby OK
               itr_status = AtCheckForItr(at_cmd, param, cbuf, search_result.limit);
@@ -886,7 +880,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
       {
         param->filling = 0;
         if (at_cmd->fun != NULL) at_cmd->fun(AT_SEND_STAGE, param);
-        len = AtCmdCreateString(at_cmd->reference_string_out, at_out_buf, sizeof(at_out_buf), param);
+        len = AtCmdCreateString(at_cmd->ref_str_out, at_out_buf, sizeof(at_out_buf), param);
         if (len > 0)
         {
           cmd_timeout = _MS_TICK;
@@ -895,7 +889,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
         }
         else
         {
-          _DebugPrintf("AT cmommand lengh = 0\n");
+          _DP("AT cmommand lengh = 0\n");
           at_state = AT_IDLE;
         }
       }
@@ -1014,9 +1008,10 @@ static uint8_t AtCheckForUrc(AtCommandParametersTypedef * param, CircularBufferT
  * @param limit    - zakres pprzeszukiwania
  * @return uint8_t - TRUE lub FALSE
  */
-static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTypedef *param, CircularBufferTypedef *cbuf, uint16_t limit)
+static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTypedef *param,
+                             CircularBufferTypedef *cbuf, uint16_t limit)
 {
-  if (TRUE == AtCmdParseString(at_cmd->reference_string_in, cbuf, limit, param))
+  if (TRUE == AtCmdParseString(at_cmd->ref_str_in, cbuf, limit, param))
   {
     if (at_cmd->fun != NULL)
     {
@@ -1029,7 +1024,7 @@ static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTy
 
 /**
  * @brief Funkcja informujaca ze modem jest gotowy do pracy
- * 
+ *
  * @return uint8_t TRUE  - modem gotowy
  *                 FALSE - modem nie gotowy
  */

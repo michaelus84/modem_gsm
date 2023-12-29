@@ -2,22 +2,21 @@
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
-		<Option title="at_modem_gsm" />
+		<Option title="modem_gsm" />
 		<Option pch_mode="2" />
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/at_modem_gsm" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Debug/modem_gsm" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-g" />
-					<Add option="-DDEBUG" />
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/at_modem_gsm" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/modem_gsm" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -40,22 +39,27 @@
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="at_engine.h" />
+		<Unit filename="at_script_common.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="at_script_common.h" />
+		<Unit filename="bg600l_script.h" />
 		<Unit filename="common.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="common.h" />
-		<Unit filename="def.h" />
 		<Unit filename="main.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="sim800_script.c">
+		<Unit filename="modem_gsm.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="sim800_script.h" />
-		<Unit filename="uart.c">
+		<Unit filename="modem_gsm.h" />
+		<Unit filename="modem_gsm_def.h" />
+		<Unit filename="modem_gsm_uart.c">
 			<Option compilerVar="CC" />
 		</Unit>
-		<Unit filename="uart.h" />
+		<Unit filename="modem_gsm_uart.h" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
 		</Extensions>

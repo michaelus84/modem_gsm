@@ -12,13 +12,11 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
-#include <sys/time.h>
-#include "def.h"
+#include "modem_gsm_def.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
-Definicje prprocesora
+Definicje preprocesora
 */
 #define EXPECTED_SMS                       gsm_flags.flag.f0
 #define MODEM_GSM_SMS_SEND_OK              gsm_flags.flag.f1
@@ -29,10 +27,10 @@ Definicje prprocesora
 Definicje typow
 */
 
-typedef union 
+typedef union
 {
   uint32_t addr;
-  struct 
+  struct
   {
     uint8_t a;
     uint8_t b;
@@ -68,7 +66,7 @@ typedef struct
   uint16_t size;
 } AtCommandParametersTypedef;
 
-typedef uint8_t (*AtFunctionTypedf)(uint8_t, AtCommandParametersTypedef *);
+typedef uint8_t (*AtFunctionTypedf)(uint8_t, AtCommandParametersTypedef *, void *);
 typedef void (* StdFun) (void);
 
 enum
@@ -145,13 +143,14 @@ typedef struct
   uint8_t label;
   uint16_t delay;
   uint16_t cmd_timeout;
-  char * reference_string_out;
-  char * reference_string_in;
+  char * ref_str_out;
+  char * ref_str_in;
   AtFunctionTypedf fun;
   uint8_t behaviore_err;
   uint8_t behaviore;
-  uint8_t aux_a;
-  uint8_t aux_b;
+  uint8_t action_a;
+  uint8_t action_b;
+  void * argv;
 } AtCommandLineTypedef;
 
 typedef struct
@@ -174,17 +173,34 @@ typedef struct
 
 typedef struct
 {
-  AtCommandLineTypedef * queue[MAX_FLOW_CACHE];
-  uint16_t queue_lines[MAX_FLOW_CACHE];
-  uint16_t start;
-  uint16_t end;
-  uint8_t fill_status;
+  Ipv4AddrTypedef dest_ip;
+  uint8_t id;
+  uint8_t num;
+  uint8_t type;
+  uint16_t len;
+  uint8_t * buffer;
+} AtSocketTypedef;
+
+typedef struct
+{
+  struct queue
+  {
+    AtCommandLineTypedef * buf[MAX_FLOW_CACHE];
+    uint16_t lines[MAX_FLOW_CACHE];
+    uint16_t start;
+    uint16_t end;
+    uint8_t fill_status;
+  } queue;
   uint8_t flow_top;
-  AtCommandLineTypedef * list[MAX_FLOW_CACHE];
-  uint8_t active_index;
-  uint16_t lines[MAX_FLOW_CACHE];
-  uint16_t active_line[MAX_FLOW_CACHE];
-  uint16_t repeat_cnt[MAX_FLOW_CACHE];
+  struct list
+  {
+    AtCommandLineTypedef * buf[MAX_FLOW_CACHE];
+    uint16_t lines[MAX_FLOW_CACHE];
+    uint16_t active_line[MAX_FLOW_CACHE];
+    uint16_t repeat_cnt[MAX_FLOW_CACHE];
+    uint8_t active;
+  } list;
+
 } AtCmdFlowTypedef;
 
 typedef struct
@@ -195,7 +211,6 @@ typedef struct
   AtCommandStrListTypedef * error;
   AtCommandStrListTypedef * urc;
 } AtScriptInitTypedef;
-
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------

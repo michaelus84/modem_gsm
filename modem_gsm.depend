@@ -1,0 +1,74 @@
+# depslib dependency file v1.0
+1686397176 source:d:\projekty\firmware\modem_gsm\common.c
+	"modem_gsm_def.h"
+
+1686227852 d:\projekty\firmware\modem_gsm\modem_gsm_def.h
+	<stdint.h>
+	<stddef.h>
+	<stdio.h>
+	<string.h>
+	<time.h>
+	<sys/time.h>
+	"common.h"
+
+1686432821 d:\projekty\firmware\modem_gsm\common.h
+
+1647546160 source:d:\projekty\firmware\modem_gsm\main.c
+	<stdio.h>
+	<stdlib.h>
+	<unistd.h>
+	"at_engine.h"
+
+1686260376 d:\projekty\firmware\modem_gsm\at_engine.h
+	<stdint.h>
+
+1686226867 source:d:\projekty\firmware\modem_gsm\modem_gsm.c
+	<unistd.h>
+	"modem_gsm.h"
+	"at_engine.h"
+	"common.h"
+
+1654108396 d:\projekty\firmware\modem_gsm\modem_gsm.h
+	<stdio.h>
+	<stdlib.h>
+	<stdint.h>
+
+1686432656 source:d:\projekty\firmware\modem_gsm\at_common.c
+	"modem_gsm_uart.h"
+	"at_engine.h"
+	"at_common_def.h"
+	"at_script_common.h"
+	"common.h"
+
+1686396983 d:\projekty\firmware\modem_gsm\modem_gsm_uart.h
+	<stdint.h>
+
+1686432624 d:\projekty\firmware\modem_gsm\at_common_def.h
+	<stdint.h>
+	<stddef.h>
+	<stdio.h>
+	<string.h>
+	"modem_gsm_def.h"
+
+1686433962 d:\projekty\firmware\modem_gsm\at_script_common.h
+	"bg600l_script.h"
+
+1686433373 d:\projekty\firmware\modem_gsm\bg600l_script.h
+	"at_common_def.h"
+
+1686433466 source:d:\projekty\firmware\modem_gsm\modem_gsm_uart.c
+	<stdlib.h>
+	"modem_gsm_uart.h"
+	"modem_gsm_def.h"
+	"common.h"
+
+1686432564 source:d:\projekty\firmware\modem_gsm\at_script_common.c
+	"at_script_common.h"
+
+1686476350 source:d:\projekty\firmware\modem_gsm\at_engine.c
+	"modem_gsm_uart.h"
+	"at_engine.h"
+	"at_common_def.h"
+	"at_script_common.h"
+	"common.h"
+

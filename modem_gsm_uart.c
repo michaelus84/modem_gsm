@@ -1,12 +1,9 @@
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/signal.h>
-#include <sys/types.h>
 #include <stdlib.h>
 
-#include "uart.h"
-#include "def.h"
+#include "modem_gsm_uart.h"
+#include "modem_gsm_def.h"
 #include "common.h"
+#include "serialport.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -47,46 +44,19 @@ Funkcje
  * @param baudrate
  * @param comport
  */
-void SerialPortConfig(UartParametersTypedef * handle, uint32_t baudrate, char * comport)
+void UartConfig(UartParametersTypedef * handle, uint32_t baudrate, char * comport)
 {
-  struct termios config;
-  int fd;
-
-  if (handle->fd) return;
-
-  fd = open(comport, O_RDWR | O_NOCTTY | O_NONBLOCK | O_SYNC);
-
-  if (fd < 0)
-  {
-    printf("Open port error\n");
-    exit(-1);
-  }
-
-  _DebugPrintf("\nPort open\n");
-
-  handle->fd = fd;
-
-  config.c_cflag = baudrate | CS8 | CLOCAL | CREAD;
-
-  config.c_iflag = IGNPAR;
-  config.c_oflag = 0;
-  config.c_lflag = 0;//ICANON;
-  config.c_cc[VMIN] = 10;
-  config.c_cc[VTIME] = 10;
-
-  tcsetattr(fd,TCSANOW, &config);
-  tcflush(fd, TCIFLUSH);
+  handle->fd = SerialPortConfig(baudrate, comport);
 }
 
 /**
  * @brief Construct a new Serial Port Close object
- * 
- * @param handle 
+ *
+ * @param handle
  */
-void SerialPortClose(UartParametersTypedef * handle)
+void UartClose(UartParametersTypedef * handle)
 {
-  _DebugPrintf("\nPort closed\n");
-  close(handle->fd);
+   SerialPortClose(handle->fd);
 }
 
 /**
@@ -106,7 +76,7 @@ uint8_t UartWrite(UartParametersTypedef * handle, uint8_t * data, uint32_t len)
   }
   printf("\n");
 #endif
-  if (write(handle->fd, data, len) < 0) return RETURN_FAILURE;
+  SerialPortWrite(handle->fd, data, len);
 
   return RETURN_SUCCESS;
 }
@@ -136,16 +106,14 @@ void UartRecieve(UartParametersTypedef * handle)
   uint16_t len;
   uint8_t uart_buffer[2048];
 
-  ioctl(handle->fd, FIONREAD, &len);
+  len = SerialPortRecieve(handle->fd, uart_buffer, sizeof(uart_buffer) - 1);
 
   if (len > 0)
   {
-    len = read(handle->fd, uart_buffer, sizeof(uart_buffer) - 1);
-
     for (i = 0; i < len; i++)
     {
       handle->control.rx_buffer_ptr[handle->control.rx_index] = uart_buffer[i];
-      _DebugPrintf("%c", uart_buffer[i]);
+      _DP("%c", uart_buffer[i]);
       IncrementIndex(&handle->control.rx_index, 1, handle->control.rx_buffer_len);
     }
     handle->control.rx_len += len;

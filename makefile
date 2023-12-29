@@ -16,10 +16,10 @@ CFLAGS = -Wall
 RESINC = 
 LIBDIR = 
 LIB = 
-LDFLAGS = -lwiringPi
+LDFLAGS = 
 
 INC_DEBUG = $(INC)
-CFLAGS_DEBUG = $(CFLAGS) -g -DDEBUG #-DWIRING_PI
+CFLAGS_DEBUG = $(CFLAGS) -g
 RESINC_DEBUG = $(RESINC)
 RCFLAGS_DEBUG = $(RCFLAGS)
 LIBDIR_DEBUG = $(LIBDIR)
@@ -27,7 +27,7 @@ LIB_DEBUG = $(LIB)
 LDFLAGS_DEBUG = $(LDFLAGS)
 OBJDIR_DEBUG = obj/Debug
 DEP_DEBUG = 
-OUT_DEBUG = bin/Debug/at_modem_gsm
+OUT_DEBUG = bin/Debug/modem_gsm
 
 INC_RELEASE = $(INC)
 CFLAGS_RELEASE = $(CFLAGS) -O2
@@ -38,11 +38,11 @@ LIB_RELEASE = $(LIB)
 LDFLAGS_RELEASE = $(LDFLAGS) -s
 OBJDIR_RELEASE = obj/Release
 DEP_RELEASE = 
-OUT_RELEASE = bin/Release/at_modem_gsm
+OUT_RELEASE = bin/Release/modem_gsm
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/at_common.o $(OBJDIR_DEBUG)/at_engine.o $(OBJDIR_DEBUG)/common.o $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/sim800_script.o $(OBJDIR_DEBUG)/uart.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/at_common.o $(OBJDIR_DEBUG)/at_engine.o $(OBJDIR_DEBUG)/at_script_common.o $(OBJDIR_DEBUG)/common.o $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/modem_gsm.o $(OBJDIR_DEBUG)/modem_gsm_uart.o
 
-OBJ_RELEASE = $(OBJDIR_RELEASE)/at_common.o $(OBJDIR_RELEASE)/at_engine.o $(OBJDIR_RELEASE)/common.o $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/sim800_script.o $(OBJDIR_RELEASE)/uart.o
+OBJ_RELEASE = $(OBJDIR_RELEASE)/at_common.o $(OBJDIR_RELEASE)/at_engine.o $(OBJDIR_RELEASE)/at_script_common.o $(OBJDIR_RELEASE)/common.o $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/modem_gsm.o $(OBJDIR_RELEASE)/modem_gsm_uart.o
 
 all: debug release
 
@@ -65,17 +65,20 @@ $(OBJDIR_DEBUG)/at_common.o: at_common.c
 $(OBJDIR_DEBUG)/at_engine.o: at_engine.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c at_engine.c -o $(OBJDIR_DEBUG)/at_engine.o
 
+$(OBJDIR_DEBUG)/at_script_common.o: at_script_common.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c at_script_common.c -o $(OBJDIR_DEBUG)/at_script_common.o
+
 $(OBJDIR_DEBUG)/common.o: common.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c common.c -o $(OBJDIR_DEBUG)/common.o
 
 $(OBJDIR_DEBUG)/main.o: main.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c main.c -o $(OBJDIR_DEBUG)/main.o
 
-$(OBJDIR_DEBUG)/sim800_script.o: sim800_script.c
-	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c sim800_script.c -o $(OBJDIR_DEBUG)/sim800_script.o
+$(OBJDIR_DEBUG)/modem_gsm.o: modem_gsm.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c modem_gsm.c -o $(OBJDIR_DEBUG)/modem_gsm.o
 
-$(OBJDIR_DEBUG)/uart.o: uart.c
-	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c uart.c -o $(OBJDIR_DEBUG)/uart.o
+$(OBJDIR_DEBUG)/modem_gsm_uart.o: modem_gsm_uart.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c modem_gsm_uart.c -o $(OBJDIR_DEBUG)/modem_gsm_uart.o
 
 clean_debug: 
 	rm -f $(OBJ_DEBUG) $(OUT_DEBUG)
@@ -99,17 +102,20 @@ $(OBJDIR_RELEASE)/at_common.o: at_common.c
 $(OBJDIR_RELEASE)/at_engine.o: at_engine.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c at_engine.c -o $(OBJDIR_RELEASE)/at_engine.o
 
+$(OBJDIR_RELEASE)/at_script_common.o: at_script_common.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c at_script_common.c -o $(OBJDIR_RELEASE)/at_script_common.o
+
 $(OBJDIR_RELEASE)/common.o: common.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c common.c -o $(OBJDIR_RELEASE)/common.o
 
 $(OBJDIR_RELEASE)/main.o: main.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c main.c -o $(OBJDIR_RELEASE)/main.o
 
-$(OBJDIR_RELEASE)/sim800_script.o: sim800_script.c
-	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c sim800_script.c -o $(OBJDIR_RELEASE)/sim800_script.o
+$(OBJDIR_RELEASE)/modem_gsm.o: modem_gsm.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c modem_gsm.c -o $(OBJDIR_RELEASE)/modem_gsm.o
 
-$(OBJDIR_RELEASE)/uart.o: uart.c
-	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c uart.c -o $(OBJDIR_RELEASE)/uart.o
+$(OBJDIR_RELEASE)/modem_gsm_uart.o: modem_gsm_uart.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c modem_gsm_uart.c -o $(OBJDIR_RELEASE)/modem_gsm_uart.o
 
 clean_release: 
 	rm -f $(OBJ_RELEASE) $(OUT_RELEASE)

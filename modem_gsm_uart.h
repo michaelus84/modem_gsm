@@ -1,7 +1,6 @@
 #ifndef _UART_H_INCLUDED
 #define _UART_H_INCLUDED
 
-#include <termio.h>
 #include <stdint.h>
 
 /*

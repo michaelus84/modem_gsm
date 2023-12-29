@@ -5,32 +5,36 @@
  *      Author: msk
  */
 
-#ifndef __AT_ENGINE_H
-#define __AT_ENGINE_H
+#ifndef __MODEM_GSM_H
+#define __MODEM_GSM_H
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje preprocesora
 */
+#define MODEM_GSM_ON              0
+#define MODEM_GSM_TIMEOUT         1
+#define MODEM_GSM_ERROR           2
 
+#define MAX_MODEM_START_TIMEOUT   60000 // ms
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow
 */
 
+/*
+-------------------------------------------------------------------------------------------------------------------------------------------
+Definicje zmiennych
+*/
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje Funkcje
 */
-void ModemInit(void);
-void ModemClosePort(void);
-void ModemGsmModule(void);
-void ModemGsmSendSmsRequest(char * phone_number, char * sms, uint16_t len);
-uint8_t ModemGsmSmsGet(char * phone_number, char * date, char * text);
-uint8_t ModemGsmReady(void);
+uint8_t ModemGsmStart(void);
 
-
-#endif /* MODEM_GSM_H_ */
+#endif /* __MODEM_GSM_H */
