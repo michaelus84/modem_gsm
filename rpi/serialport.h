@@ -1,20 +1,17 @@
-/*
- * eg915_script.h
- *
- *  Created on: 9 lip 2019
- *      Author: msk
- */
+#ifndef _SERIALPORT_H_INCLUDED
+#define _SERIALPORT_H_INCLUDED
 
-#ifndef __EG915_SCRIPT_H
-#define __EG915_SCRIPT_H
-
-#include "at_common_def.h"
+#include <stdint.h>
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje preprocesora
 */
-
+#if defined(DEBUG)
+  #define _SerialPortDebugPrintf(...)                   printf(__VA_ARGS__)
+#else
+  #define _SerialPortDebugPrintf(...)
+#endif
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -31,7 +28,9 @@ Definicje zmiennych
 Definicje Funkcje
 */
 
-void AtModemInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status);
+int SerialPortConfig(uint32_t baudrate, char * comport); 
+void SerialPortClose(int fd);
+uint8_t SerialPortWrite(int fd, uint8_t * data, uint32_t len);
+int SerialPortRecieve(int fd, uint8_t * buffer, uint16_t max_len);
 
-
-#endif /* __EG915_SCRIPT_H */
+#endif // _SERIALPORT_H_INCLUDED

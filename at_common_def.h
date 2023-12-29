@@ -27,6 +27,8 @@ Definicje preprocesora
 Definicje typow
 */
 
+typedef unsigned int uint_t;
+
 typedef union
 {
   uint32_t addr;
@@ -66,7 +68,7 @@ typedef struct
   uint16_t size;
 } AtCommandParametersTypedef;
 
-typedef uint8_t (*AtFunctionTypedf)(uint8_t, AtCommandParametersTypedef *, void *);
+typedef uint8_t (*AtFunctionTypedf)(uint8_t, AtCommandParametersTypedef *, uint_t *);
 typedef void (* StdFun) (void);
 
 enum
@@ -150,7 +152,7 @@ typedef struct
   uint8_t behaviore;
   uint8_t action_a;
   uint8_t action_b;
-  void * argv;
+  uint_t * argv;
 } AtCommandLineTypedef;
 
 typedef struct

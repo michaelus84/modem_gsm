@@ -4,8 +4,9 @@
 #include "modem_gsm_uart.h"
 #include "at_engine.h"
 #include "at_common_def.h"
-#include "at_script_common.h"
+#include "eg915_script.h"
 #include "common.h"
+#include "platform.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -120,10 +121,10 @@ Funkcje
 void ModemInit(void)
 {
   // konfigurujemy odbior danych
-  //UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
-  //SerialPortConfig(&modem_handle, 115200, MODEM_UART);
-  //AtModemInitScript(&scripts, &at_cmd_flow, &modem_status);
-  //GpioInit(PWR_KEY);
+  UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
+  UartConfig(&modem_handle, 115200, MODEM_UART);
+  AtModemInitScript(&scripts, &at_cmd_flow, &modem_status);
+  GpioInit(PWR_KEY);
 }
 
 /**
@@ -132,7 +133,7 @@ void ModemInit(void)
  */
 void ModemClosePort(void)
 {
-  SerialPortClose(&modem_handle);
+  UartClose(&modem_handle);
 }
 
 /**
@@ -844,7 +845,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
             {
               EXPECTED_SMS = 0;
               //if (NULL != sms_buffer_ptr)
-              //  CopyFromCircularBuffer(cbuf, sms_buffer_ptr, search_result.limit);
+              // CopyFromCircularBuffer(cbuf, sms_buffer_ptr, search_result.limit);
             }
             else if (at_cmd->ref_str_in != NULL)
             {
@@ -879,7 +880,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
       if ((_MS_TICK - cmd_time_interval) > _CMD_TIME_INTERVAL)
       {
         param->filling = 0;
-        if (at_cmd->fun != NULL) at_cmd->fun(AT_SEND_STAGE, param);
+        if (at_cmd->fun != NULL) at_cmd->fun(AT_SEND_STAGE, param, at_cmd->argv);
         len = AtCmdCreateString(at_cmd->ref_str_out, at_out_buf, sizeof(at_out_buf), param);
         if (len > 0)
         {
@@ -939,7 +940,7 @@ static uint8_t AtCheckForOk(AtCommandLineTypedef *at_cmd, AtCommandParametersTyp
   {
     if (at_cmd->fun != NULL)
     {
-      at_cmd->fun(AT_OK_STAGE, param);
+      at_cmd->fun(AT_OK_STAGE, param, at_cmd->argv);
     }
     return TRUE;
   }
@@ -965,7 +966,7 @@ static uint8_t AtCheckForErr(AtCommandLineTypedef * at_cmd, AtCommandParametersT
     {
       if (at_cmd->fun != NULL)
       {
-        at_cmd->fun(AT_ERROR_STAGE, param);
+        at_cmd->fun(AT_ERROR_STAGE, param, at_cmd->argv);
       }
       return TRUE;
     }
@@ -991,7 +992,7 @@ static uint8_t AtCheckForUrc(AtCommandParametersTypedef * param, CircularBufferT
     {
       if (scripts.urc->str_lis[i].fun != NULL)
       {
-        scripts.urc->str_lis[i].fun(AT_URC_STAGE, param);
+        scripts.urc->str_lis[i].fun(AT_URC_STAGE, param, at_cmd->argv);
       }
       return TRUE;
     }
@@ -1015,7 +1016,7 @@ static uint8_t AtCheckForItr(AtCommandLineTypedef *at_cmd, AtCommandParametersTy
   {
     if (at_cmd->fun != NULL)
     {
-      at_cmd->fun(AT_ITR_STAGE, param);
+      at_cmd->fun(AT_ITR_STAGE, param, at_cmd->argv);
     }
     return TRUE;
   }

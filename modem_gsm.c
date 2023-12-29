@@ -40,9 +40,6 @@ Funkcje
  */
 uint8_t ModemGsmStart(void)
 {
-  uint32_t timeout;
-  uint8_t ret;
-
   ModemInit();
 
   while(1)

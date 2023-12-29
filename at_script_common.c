@@ -23,50 +23,47 @@ Definicje funkcji wewnetrznych
 Definicje stalych
 */
 
-
-/**
- * @brief Lista URC do sprawdzenia
- *
- */
-static StringListTypedef const UrcList[] =
-{
-  {&AtSmsRecieve, "+CMTI: \"SM\",%d"                                                        },
-  {&AtRing      , "RING"                                                                    },
-  {&AtReg       , "+CREG: %d"                                                               },
-};
-
-static AtCommandStrListTypedef Sim800_Urc_List   = {UrcList   , _NumOfRows(UrcList)   };
-
 /**
  * @brief Lista komend od wyslania SMS-a
  *
  */
 static AtCommandLineTypedef const At_Sms_Send[] =
 {
-  {0, 0, 60, "+CMGS=\"%s\""          , "+CMGS: %d"   , &AtSmsSend, IGNORE, DEFAULT,      0, 0},  // wyslanie SMS-a
+  {0, 0, 60, "+CMGS=\"%s\""          , "+CMGS: %d"            , &AtSmsSend   , IGNORE, DEFAULT,   0, 0, NULL},  // wyslanie SMS-a
 };
+
+AtCommandListTypedef const At_Sms_Send_List = {At_Sms_Send, _NumOfRows(At_Sms_Send)};
 
 static AtCommandLineTypedef const At_Sms_Recieve[] =
 {
-  {0, 0, 60, "+CMGR=1" , "+CMGR: \"%s\",\"%s\",\"\",\"%s,%s\"", &AtSmsRecieve, IGNORE, DEFAULT,   0, 0},  // odczytanie SMS-a
-  {0, 0, 60, "+CMGD=1,4", NULL                                , NULL         , IGNORE, DEFAULT,   0, 0},  // usuniecie SMS-a
+  {0, 0, 60, "+CMGR=1" , "+CMGR: \"%s\",\"%s\",\"\",\"%s,%s\"", &AtSmsRecieve, IGNORE, DEFAULT,   0, 0, NULL},  // odczytanie SMS-a
+  {0, 0, 60, "+CMGD=1,4", NULL                                , NULL         , IGNORE, DEFAULT,   0, 0, NULL},  // usuniecie SMS-a
 };
 
 static AtCommandLineTypedef const At_Ring[] =
 {
-  {       0, 0, 60, "H"                     , NULL          , NULL      , IGNORE, DEFAULT,      0, 0},  // odrzuc polaczenie
+  {       0, 0, 60, "H"                     , NULL            , NULL      , IGNORE, DEFAULT,      0, 0, NULL},  // odrzuc polaczenie
 };
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje zmiennych
 */
 
+static AtCmdFlowTypedef * common_cmd_flow;
+static ModemStatusTypedef * common_modem_status;
+static AtScriptInitTypedef * common_ops;
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Funkcje
 */
 
+void AtModemCommonInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status)
+{
+  common_cmd_flow = cmd_flow;
+  common_modem_status = status;
+  common_ops = ops;
+}
 
 /**
  * @brief
@@ -75,7 +72,7 @@ Funkcje
  * @param values
  * @return uint8_t
  */
-uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   switch (stage)
   {
@@ -101,7 +98,6 @@ uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, void * data)
   return TRUE;
 }
 
-#if NOT_PRESENT == ONLY_MODEM_START
 /**
  * @brief
  *
@@ -109,10 +105,10 @@ uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, void * data)
  * @param values
  * @return uint8_t
  */
-uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) data;
+  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -148,7 +144,7 @@ uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, void * data
  * @param values
  * @return uint8_t
  */
-uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   char * str =  (char *) data;
 
@@ -183,10 +179,10 @@ uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, void * data)
  * @param values
  * @return uint8_t
  */
-uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) data;
+  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -219,11 +215,11 @@ uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, void * data)
  * @param values
  * @return uint8_t
  */
-uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
 
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) data;
+  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -257,10 +253,10 @@ uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, void * data)
  * @param values
  * @return uint8_t
  */
-uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values, void * data)
+uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   if (AT_URC_STAGE == stage)
-    PutAtCmdListToFlow((AtCommandLineTypedef *)At_Ring, _NumOfRows(At_Ring), eg915_cmd_flow);
+    PutAtCmdListToFlow((AtCommandLineTypedef *)At_Ring, _NumOfRows(At_Ring), common_cmd_flow);
   return TRUE;
 }
 
@@ -273,7 +269,7 @@ uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values, void * data)
  * @param values    - parametr do przetworzenia
  * @return uint8_t  - TRUE lub FALSE
  */
-uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values)
+uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   switch (stage)
   {
@@ -306,7 +302,7 @@ uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values)
  * @param values
  * @return uint8_t
  */
-uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values)
+uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
 
@@ -323,14 +319,14 @@ uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values)
       break;
 
     case AT_URC_STAGE:
-      modem_status->sms_num = GetNumberFromStream(values, &index);
-      PutAtCmdListToFlow((AtCommandLineTypedef *)At_Sms_Recieve, _NumOfRows(At_Sms_Recieve), sim800_cmd_flow);
+      common_modem_status->sms_num = GetNumberFromStream(values, &index);
+      PutAtCmdListToFlow((AtCommandLineTypedef *)At_Sms_Recieve, _NumOfRows(At_Sms_Recieve), common_cmd_flow);
       break;
 
     case AT_OK_STAGE:
-      if (sim800_ops->SmsRecieveCallback != NULL)
+      if (common_ops->SmsRecieveCallback != NULL)
       {
-        sim800_ops->SmsRecieveCallback();
+        common_ops->SmsRecieveCallback();
       }
       break;
 

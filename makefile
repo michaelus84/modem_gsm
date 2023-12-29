@@ -11,12 +11,12 @@ AR = ar
 LD = g++
 WINDRES = windres
 
-INC = 
-CFLAGS = -Wall
+INC = -I$(VARIANT)
+CFLAGS = -Wall 
 RESINC = 
 LIBDIR = 
 LIB = 
-LDFLAGS = 
+LDFLAGS = -lwiringPi
 
 INC_DEBUG = $(INC)
 CFLAGS_DEBUG = $(CFLAGS) -g
@@ -40,15 +40,21 @@ OBJDIR_RELEASE = obj/Release
 DEP_RELEASE = 
 OUT_RELEASE = bin/Release/modem_gsm
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/at_common.o $(OBJDIR_DEBUG)/at_engine.o $(OBJDIR_DEBUG)/at_script_common.o $(OBJDIR_DEBUG)/common.o $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/modem_gsm.o $(OBJDIR_DEBUG)/modem_gsm_uart.o
 
-OBJ_RELEASE = $(OBJDIR_RELEASE)/at_common.o $(OBJDIR_RELEASE)/at_engine.o $(OBJDIR_RELEASE)/at_script_common.o $(OBJDIR_RELEASE)/common.o $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/modem_gsm.o $(OBJDIR_RELEASE)/modem_gsm_uart.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/at_common.o $(OBJDIR_DEBUG)/at_engine.o $(OBJDIR_DEBUG)/at_script_common.o $(OBJDIR_DEBUG)/common.o \
+            $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/modem_gsm.o $(OBJDIR_DEBUG)/modem_gsm_uart.o $(OBJDIR_DEBUG)/eg915_script.o \
+            $(OBJDIR_DEBUG)/serialport.o $(OBJDIR_DEBUG)/platform.o
+
+OBJ_RELEASE = $(OBJDIR_RELEASE)/at_common.o $(OBJDIR_RELEASE)/at_engine.o $(OBJDIR_RELEASE)/at_script_common.o \
+              $(OBJDIR_RELEASE)/common.o $(OBJDIR_RELEASE)/main.o $(OBJDIR_RELEASE)/modem_gsm.o $(OBJDIR_RELEASE)/modem_gsm_uart.o \
+              $(OBJDIR_RELEASE)/eg915_script.o $(OBJDIR_RELEASE)/serialport.o $(OBJDIR_RELEASE)/platform.o
 
 all: debug release
 
 clean: clean_debug clean_release
 
 before_debug: 
+	$(info    platform is $(VARIANT))
 	test -d bin/Debug || mkdir -p bin/Debug
 	test -d $(OBJDIR_DEBUG) || mkdir -p $(OBJDIR_DEBUG)
 
@@ -80,12 +86,23 @@ $(OBJDIR_DEBUG)/modem_gsm.o: modem_gsm.c
 $(OBJDIR_DEBUG)/modem_gsm_uart.o: modem_gsm_uart.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c modem_gsm_uart.c -o $(OBJDIR_DEBUG)/modem_gsm_uart.o
 
+$(OBJDIR_DEBUG)/eg915_script.o: eg915_script.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c eg915_script.c -o $(OBJDIR_DEBUG)/eg915_script.o
+
+$(OBJDIR_DEBUG)/serialport.o: $(VARIANT)/serialport.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c $(VARIANT)/serialport.c -o $(OBJDIR_DEBUG)/serialport.o
+
+$(OBJDIR_DEBUG)/platform.o: $(VARIANT)/platform.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c $(VARIANT)/platform.c -o $(OBJDIR_DEBUG)/platform.o
+
+
 clean_debug: 
 	rm -f $(OBJ_DEBUG) $(OUT_DEBUG)
 	rm -rf bin/Debug
 	rm -rf $(OBJDIR_DEBUG)
 
 before_release: 
+	$(info    platform is $(VARIANT))
 	test -d bin/Release || mkdir -p bin/Release
 	test -d $(OBJDIR_RELEASE) || mkdir -p $(OBJDIR_RELEASE)
 
@@ -116,6 +133,15 @@ $(OBJDIR_RELEASE)/modem_gsm.o: modem_gsm.c
 
 $(OBJDIR_RELEASE)/modem_gsm_uart.o: modem_gsm_uart.c
 	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c modem_gsm_uart.c -o $(OBJDIR_RELEASE)/modem_gsm_uart.o
+
+$(OBJDIR_RELEASE)/eg915_script.o: eg915_script.c
+	$(CC) $(CFLAGS_RELEASE) $(INC_RELEASE) -c eg915_script.c -o $(OBJDIR_RELEASE)/eg915_script.o
+
+$(OBJDIR_RELEASE)/serialport.o: $(VARIANT)/serialport.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_RELEASE) -c $(VARIANT)/serialport.c -o $(OBJDIR_RELEASE)/serialport.o
+
+$(OBJDIR_RELEASE)/platform.o: $(VARIANT)/platform.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_RELEASE) -c $(VARIANT)/platform.c -o $(OBJDIR_RELEASE)/platform.o
 
 clean_release: 
 	rm -f $(OBJ_RELEASE) $(OUT_RELEASE)

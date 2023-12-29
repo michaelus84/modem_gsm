@@ -25,14 +25,19 @@ Definicje typow
 Definicje zmiennych
 */
 
+extern AtCommandListTypedef const At_Sms_Send_List;
+
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje Funkcje
 */
-void AtModemInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status, void * data);
-uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, void * data);
-uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, void * data);
-uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, void * data);
-uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, void * data);
-uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, void * data);
+void AtModemCommonInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status);
+uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtSmsSend(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtSmsRecieve(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
+uint8_t AtRing(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data);
 #endif // __AT_SCRIPTS_H

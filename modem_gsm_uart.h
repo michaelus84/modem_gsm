@@ -65,8 +65,8 @@ typedef struct
 } UartParametersTypedef;
 
 
-void SerialPortConfig(UartParametersTypedef * handle, uint32_t baudrate, char * comport);
-void SerialPortClose(UartParametersTypedef * handle);
+void UartConfig(UartParametersTypedef * handle, uint32_t baudrate, char * comport);
+void UartClose(UartParametersTypedef * handle);
 void UartReadInit(UartParametersTypedef * handle, uint8_t * data, uint32_t len, uint32_t timeout);
 uint8_t UartWrite(UartParametersTypedef * handle, uint8_t * data, uint32_t len);
 void UartRecieve(UartParametersTypedef * handle);

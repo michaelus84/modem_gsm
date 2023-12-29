@@ -2,7 +2,7 @@
 -------------------------------------------------------------------------------------------------------------------------------------------
 */
 #include "at_script_common.h"
-#include "egg915_script.h"
+#include "eg915_script.h"
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje preprocesora - lokalna
@@ -24,9 +24,8 @@ Definicje zmiennych
 */
 
 static AtCmdFlowTypedef * eg915_cmd_flow;
-static ModemStatusTypedef * modem_status;
+static uint_t modem_status;
 static AtScriptInitTypedef * eg915_ops;
-
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -66,9 +65,9 @@ static AtCommandLineTypedef const At_Commands[] =
   {LB_APN,   0,   3, "+CGDCONT=1,\"IP\",\"%s\"" , NULL                          , &AtApn    , IGNORE, DEFAULT,      0, 0, NULL},
   {LB_CGAT,  0, 180, "+CGATT=1"                 , NULL                          , NULL      , REBOOT, DEFAULT,      0, 0, NULL},
   {LB_CGAT,  0, 180, "+CGACT=1,1"               , NULL                          , NULL      , REBOOT, DEFAULT,      0, 0, NULL},
-  {LB_CSQ,   0,   3, "+CSQ"                     , "+CSQ: %d,%d"                 , &AtCsq    , IGNORE, DEFAULT,      0, 0, (void *) modem_status},
-  {LB_IP,    0,   3, "+CGPADDR=1"               , "+CGPADDR: 1,\"%d,%d,%d,%d\"" , &AtIpAddr , IGNORE, DEFAULT,      0, 0, (void *) modem_status},
-  {LB_CREG,  5,   3, "+CREG?"                   , "+CREG: %d,%d"                , &AtReg    , JUMP  , JUMP   , LB_CSQ, 0, (void *) modem_status}
+  {LB_CSQ,   0,   3, "+CSQ"                     , "+CSQ: %d,%d"                 , &AtCsq    , IGNORE, DEFAULT,      0, 0, &modem_status},
+  {LB_IP,    0,   3, "+CGPADDR=1"               , "+CGPADDR: 1,\"%d,%d,%d,%d\"" , &AtIpAddr , IGNORE, DEFAULT,      0, 0, &modem_status},
+  {LB_CREG,  5,   3, "+CREG?"                   , "+CREG: %d,%d"                , &AtReg    , JUMP  , JUMP   , LB_CSQ, 0, &modem_status}
 };
 
 static AtCommandListTypedef const At_Commands_List = {At_Commands, _NumOfRows(At_Commands)};
@@ -80,23 +79,27 @@ Funkcje
 */
 
 /**
- * @brief
- *
- * @param cmd_flow
+ * @brief 
+ * 
+ * @param ops 
+ * @param cmd_flow 
+ * @param status 
  */
 void AtModemInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_flow, ModemStatusTypedef * status)
 {
   eg915_cmd_flow = cmd_flow;
-  modem_status = status;
+  modem_status = (uint_t)status;
 
   if (NULL == ops || NULL == cmd_flow)
     return;
 
   memset(ops, 0, sizeof(AtScriptInitTypedef));
 
-  ops->base = &At_Commands_List;
-  ops->sms_send = NULL;
-  ops->error = &At_Error_List;
-  ops->urc = &At_Urc_List;
+  ops->base = (AtCommandListTypedef *)&At_Commands_List;
+  ops->sms_send = (AtCommandListTypedef *)&At_Sms_Send_List;
+  ops->error = (AtCommandStrListTypedef *)&At_Error_List;
+  ops->urc = (AtCommandStrListTypedef *)&At_Urc_List;
   eg915_ops = ops;
+
+  AtModemCommonInitScript(ops, cmd_flow, status);
 }

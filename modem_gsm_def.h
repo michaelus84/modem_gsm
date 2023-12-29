@@ -23,11 +23,6 @@ Definicje preprocesora
 
 #define ONLY_MODEM_START                     PRESENT
 
-#define PWR_KEY                              0
-#define PWR_KEY_GPIO                         NULL
-
-#define MODEM_UART                           NULL
-
 #if defined(DEBUG)
   #define _DP(...)                           printf(__VA_ARGS__)
 #else

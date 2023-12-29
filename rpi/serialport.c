@@ -7,6 +7,7 @@
 #include <termio.h>
 
 #include "serialport.h"
+#include "../modem_gsm_def.h"
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -53,6 +54,8 @@ int SerialPortConfig(uint32_t baudrate, char * comport)
 {
   struct termios config;
 
+  int fd;
+
   fd = open(comport, O_RDWR | O_NOCTTY | O_NONBLOCK | O_SYNC);
 
   if (fd < 0)
@@ -73,6 +76,8 @@ int SerialPortConfig(uint32_t baudrate, char * comport)
 
   tcsetattr(fd,TCSANOW, &config);
   tcflush(fd, TCIFLUSH);
+
+  return fd;
 }
 
 /**
@@ -98,14 +103,10 @@ void SerialPortClose(int fd)
  
 uint8_t SerialPortWrite(int fd, uint8_t * data, uint32_t len)
 {
-#if defined(UART_DEBUG)
-  for (uint32_t i = 0; i < len; i++)
+  if (write(fd, data, len) < 0)
   {
-    printf("%c", (char)data[i]);
+    return RETURN_FAILURE;
   }
-  printf("\n");
-#endif
-  if (write(fd, data, len) < 0) return RETURN_FAILURE;
 
   return RETURN_SUCCESS;
 }
@@ -117,9 +118,8 @@ uint8_t SerialPortWrite(int fd, uint8_t * data, uint32_t len)
  * @param buffer 
  * @param max_len 
  */
-int SerialPortRecieve(int fd, uint8_t buffer, uint16_t max_len)
+int SerialPortRecieve(int fd, uint8_t * buffer, uint16_t max_len)
 {
-  uint16_t i;
   uint16_t len;
 
   ioctl(fd, FIONREAD, &len);

@@ -13,8 +13,12 @@
 Definicje prprocesora
 */
 
-#define FALSE           0
-#define TRUE            1
+#if !defined(FALSE)
+  #define FALSE           0
+#endif
+#if !defined(TRUE)
+  #define TRUE            1
+#endif
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -32,9 +36,5 @@ Definicje Funkcje
 */
 
 void IncrementIndex(uint16_t * index_ptr, uint16_t offset, uint16_t range);
-uint8_t GpioInit(void);
-void GpioWrite(void * gpio, uint32_t pin, uint8_t value);
-uint8_t GpioRead(void * gpio, uint32_t pin);
-uint32_t GetTick(void);
 
 #endif /* __CMMON_H */
