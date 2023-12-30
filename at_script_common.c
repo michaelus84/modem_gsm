@@ -74,10 +74,19 @@ void AtModemCommonInitScript(AtScriptInitTypedef * ops, AtCmdFlowTypedef * cmd_f
  */
 uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
+  ModemStatusTypedef * modem_params = (ModemStatusTypedef *) (* data);
+
   switch (stage)
   {
     case AT_SEND_STAGE:
-
+      if (modem_params->baudrate)
+      {
+        PutNumberToStream(modem_params->baudrate, values);
+      }
+      else
+      {
+        PutNumberToStream(DEFAULT_BAUDRATE, values);
+      }
       break;
 
     case AT_ITR_STAGE:
@@ -108,7 +117,7 @@ uint8_t AtIpr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
+  ModemStatusTypedef * modem_params = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -117,10 +126,10 @@ uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * da
       break;
 
     case AT_ITR_STAGE:
-      modem_status->ip.a = GetNumberFromStream(values, &index);
-      modem_status->ip.b = GetNumberFromStream(values, &index);
-      modem_status->ip.c = GetNumberFromStream(values, &index);
-      modem_status->ip.d = GetNumberFromStream(values, &index);
+      modem_params->ip.a = GetNumberFromStream(values, &index);
+      modem_params->ip.b = GetNumberFromStream(values, &index);
+      modem_params->ip.c = GetNumberFromStream(values, &index);
+      modem_params->ip.d = GetNumberFromStream(values, &index);
       break;
 
     case AT_OK_STAGE:
@@ -146,16 +155,23 @@ uint8_t AtIpAddr(uint8_t stage, AtCommandParametersTypedef * values, uint_t * da
  */
 uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
-  char * str =  (char *) data;
+  ModemStatusTypedef * modem_params = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
     case AT_SEND_STAGE:
-
+      if (modem_params->apn != NULL)
+      {
+        PutStringToStream(modem_params->apn, values);
+      }
+      else
+      {
+        PutStringToStream(DEFAULT_APN, values);
+      }
       break;
 
     case AT_ITR_STAGE:
-      PutStringToStream(str, values);
+
       break;
 
     case AT_OK_STAGE:
@@ -182,7 +198,7 @@ uint8_t AtApn(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
+  ModemStatusTypedef * modem_params = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -191,7 +207,7 @@ uint8_t AtCsq(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
       break;
 
     case AT_ITR_STAGE:
-      modem_status->csq = GetNumberFromStream(values, &index);
+      modem_params->csq = GetNumberFromStream(values, &index);
       break;
 
     case AT_OK_STAGE:
@@ -219,7 +235,7 @@ uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
 {
   uint16_t index = 0;
 
-  ModemStatusTypedef * modem_status = (ModemStatusTypedef *) (* data);
+  ModemStatusTypedef * modem_params = (ModemStatusTypedef *) (* data);
 
   switch (stage)
   {
@@ -228,8 +244,8 @@ uint8_t AtReg(uint8_t stage, AtCommandParametersTypedef * values, uint_t * data)
       break;
 
     case AT_ITR_STAGE:
-      modem_status->reg = GetNumberFromStream(values, &index);
-      modem_status->reg = GetNumberFromStream(values, &index);
+      modem_params->reg = GetNumberFromStream(values, &index);
+      modem_params->reg = GetNumberFromStream(values, &index);
       break;
 
     case AT_OK_STAGE:

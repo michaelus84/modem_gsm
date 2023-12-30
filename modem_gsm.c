@@ -32,20 +32,3 @@ Definicje zmiennych
 -------------------------------------------------------------------------------------------------------------------------------------------
 Funkcje
 */
-
-/**
- * @brief
- *
- * @return uint8_t
- */
-uint8_t ModemGsmStart(void)
-{
-  ModemInit();
-
-  while(1)
-  {
-    ModemGsmModule();
-  }
-
-  return MODEM_GSM_ERROR;
-}

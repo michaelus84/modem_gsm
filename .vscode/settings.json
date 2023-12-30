@@ -11,7 +11,14 @@
     "modem_gsm_def.h": "c",
     "at_script_common.h": "c",
     "serialport.h": "c",
-    "eg915_script.h": "c"
+    "eg915_script.h": "c",
+    "platform.h": "c",
+    "string.h": "c",
+    "termios.h": "c",
+    "termio.h": "c",
+    "ioctl.h": "c",
+    "signal.h": "c",
+    "common.h": "c"
   },
   "C_Cpp_Runner.msvcBatchPath": "",
   "C_Cpp_Runner.cCompilerPath": "gcc",

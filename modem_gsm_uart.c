@@ -1,5 +1,4 @@
 #include <stdlib.h>
-
 #include "modem_gsm_uart.h"
 #include "modem_gsm_def.h"
 #include "common.h"
@@ -56,7 +55,8 @@ void UartConfig(UartParametersTypedef * handle, uint32_t baudrate, char * compor
  */
 void UartClose(UartParametersTypedef * handle)
 {
-   SerialPortClose(handle->fd);
+  printf("Uart close\n");
+  SerialPortClose(handle->fd);
 }
 
 /**

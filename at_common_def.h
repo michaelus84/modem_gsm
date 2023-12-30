@@ -47,6 +47,8 @@ typedef struct
   uint8_t reg;
   uint8_t sms_num;
   Ipv4AddrTypedef ip;
+  char * apn;
+  uint32_t baudrate;
 } ModemStatusTypedef;
 
 

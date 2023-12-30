@@ -36,7 +36,7 @@ Definicje stalych
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje zmiennych
 */
-
+static int request_fd[GPIO_V2_LINES_MAX];
 
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
@@ -47,12 +47,45 @@ Funkcje
  * @brief 
  * 
  */
-uint8_t GpioInit(void * gpio, uint32_t pin, uint8_t dir)
+uint8_t GpioInit(void * gpio, uint32_t pin, uint8_t dir, char * label)
 {
   #if defined(WIRING_PI)
   if (wiringPiSetup() < 0)
     return RETURN_FAILURE;
-  pinMode (PWR_KEY, OUTPUT);
+  pinMode (pin, OUTPUT);
+  #else
+  struct gpio_v2_line_request request = {0};
+
+  int fd;
+
+  fd = open((const char *)gpio, O_RDONLY);
+
+  if (fd < 0)
+  {
+    _DP("%s: open gpio failed\n", __func__);
+    return RETURN_FAILURE;
+  }
+
+  request.offsets[0] = pin;
+  strncpy(request.consumer, label, GPIO_MAX_NAME_SIZE);
+  if (dir == GPIO_OUTPUT)
+  {
+    request.config.flags = GPIO_V2_LINE_FLAG_OUTPUT;
+  }
+  else
+  {
+    request.config.flags = GPIO_V2_LINE_FLAG_INPUT;
+  }
+  request.num_lines = 1;
+
+  if (ioctl(fd, GPIO_V2_GET_LINE_IOCTL, &request) < 0)
+  {
+    _DP("%s: config gpio failed\n", __func__);
+    close(request.fd);
+    return RETURN_FAILURE;
+  }
+  close(fd);
+  request_fd[pin] = request.fd;
   #endif
   return RETURN_SUCCESS;
 }
@@ -68,37 +101,15 @@ void GpioWrite(void * gpio, uint32_t pin, uint8_t value)
   #if defined(WIRING_PI)
   digitalWrite(pin, value);
   #else
-  struct gpiohandle_request request;
-  struct gpiohandle_data data;
+  struct gpio_v2_line_values data = {0};
 
-  int fd;
+  data.bits = value;
+  data.mask = 1;
 
-  fd = open((char *)gpio, O_RDONLY);
-
-  if (fd < 0)
+  if (ioctl(request_fd[pin], GPIO_V2_LINE_SET_VALUES_IOCTL, &data) < 0)
   {
-    _DP("%s: open gpio failed\n", __func__);
-    return;
+    _DP("%s: write gpio pin %d (%d)failed\n", __func__, pin, request_fd[pin]);
   }
-
-  request.lineoffsets[0] = pin;
-  request.flags = GPIOHANDLE_REQUEST_OUTPUT;
-  request.lines = 1;
-
-  if (ioctl(fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
-  {
-    _DP("%s: config gpio failed\n", __func__);
-    close(request.fd);
-    return;
-  }
-
-  data.values[0] = value;
-  if (ioctl(request.fd, GPIOHANDLE_SET_LINE_VALUES_IOCTL, &data) < 0)
-  {
-    _DP("%s: write gpio failed\n", __func__);
-  }
-
-  close(request.fd);
   #endif
 }
 
@@ -113,42 +124,34 @@ uint8_t GpioRead(void * gpio, uint32_t pin)
   #if defined(WIRING_PI)
   return digitalRead(pin);
   #else
-  struct gpiohandle_request request;
-  struct gpiohandle_data data;
+  struct gpio_v2_line_values data = {0};
 
-  int fd;
+  data.mask = 1;
 
-  fd = open((char *)gpio, O_RDONLY);
-
-  if (fd < 0)
-  {
-    _DP("%s: open gpio failed\n", __func__);
-    return 0;
-  }
-
-  request.lineoffsets[0] = pin;
-  request.flags = GPIOHANDLE_REQUEST_INPUT;
-  request.lines = 1;
-
-  if (ioctl(fd, GPIO_GET_LINEHANDLE_IOCTL, &request) < 0)
-  {
-    _DP("%s: config gpio failed\n", __func__);
-    close(fd);
-    return 0;
-  }
-
-  if (ioctl(request.fd, GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0)
+  if (ioctl(request_fd[pin], GPIOHANDLE_GET_LINE_VALUES_IOCTL, &data) < 0)
   {
     _DP("%s: read gpio failed\n", __func__);
-    data.values[0] = 0;
+    data.bits = 0;
   };
 
-  close(request.fd);
-
-  return data.values[0];
+  return data.bits;
   #endif
 }
 
+/**
+ * @brief 
+ * 
+ */
+void GpioCloseAll(void)
+{
+  for (uint8_t i = 0; i < GPIO_V2_LINES_MAX; i++)
+  {
+    if (request_fd[i] > 0)
+    {
+      close(request_fd[i]);
+    }
+  }
+}
 /**
  * @brief Funkcja zwracajaca licznik milisekund
  *

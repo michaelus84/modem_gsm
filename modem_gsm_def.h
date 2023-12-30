@@ -45,6 +45,9 @@ Definicje preprocesora
 #define _NumOfRows(x)                         (sizeof(x)/sizeof(x[0]))
 #define _IsDigit(d)                           (((d) >= '0') && ((d) <= '9'))
 
+#define DEFAULT_APN                           "plus"
+#define DEFAULT_BAUDRATE                      115020
+
 /*
 -------------------------------------------------------------------------------------------------------------------------------------------
 Definicje typow

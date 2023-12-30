@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "at_engine.h"
+#include "platform.h"
 
 int main(void)
 {
@@ -11,13 +12,8 @@ int main(void)
   while(1)
   {
     ModemGsmModule();
-    if (ModemGsmReady())
-    {
-      printf("Modem GSM ready\n");
-      ModemClosePort();
-      return 0;
-    }
     usleep(1000);
   }
+  GpioCloseAll();
   return 0;
 }

@@ -102,7 +102,7 @@ static uint16_t recieve_len;
 static uint8_t prev_top_flow = 0;
 static UartParametersTypedef modem_handle;
 static AtScriptInitTypedef scripts;
-static ModemStatusTypedef modem_status;
+static ModemStatusTypedef modem_params;
 Flags8bitTypedef gsm_flags;
 
 #if defined(DEBUG)
@@ -123,8 +123,11 @@ void ModemInit(void)
   // konfigurujemy odbior danych
   UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
   UartConfig(&modem_handle, 115200, MODEM_UART);
-  AtModemInitScript(&scripts, &at_cmd_flow, &modem_status);
-  GpioInit(PWR_KEY);
+  modem_params.baudrate = 115200;
+  modem_params.apn = DEFAULT_APN;
+  AtModemInitScript(&scripts, &at_cmd_flow, &modem_params);
+  GpioInit(PWR_KEY_GPIO, PWR_KEY_PIN, GPIO_OUTPUT, "POWER KEY");
+  _DP("Init complete\n");
 }
 
 /**
@@ -182,14 +185,14 @@ void ModemGsmModule(void)
     case MODEM_PWR_KEY:
       // Ustwiamy power key w stan niski aby uruchomic modem
       _DP("Power Key pull down\n");
-      GpioWrite(PWR_KEY_GPIO, PWR_KEY, 1);
+      GpioWrite(PWR_KEY_GPIO, PWR_KEY_PIN, 1);
       NextStateWithDelay(&modem_state, MODEM_PWR_KEY_RELEASE, _PWR_KEY_LOW_STATE_TIMEOUT);
       break;
 
     case MODEM_PWR_KEY_RELEASE:
       // zwalniamy power key
       _DP("Power Key release\n");
-      GpioWrite(PWR_KEY_GPIO, PWR_KEY, 0);
+      GpioWrite(PWR_KEY_GPIO, PWR_KEY_PIN, 0);
       NextStateWithDelay(&modem_state, MODEM_RUN, _PWR_KEY_RELEASE_TIMEOUT);
       UartReadInit(&modem_handle, (uint8_t *)circular_buffer, sizeof(circular_buffer), 0);
       #if defined(DEBUG)
@@ -890,7 +893,7 @@ uint8_t AtCmdSequence(AtCmdFlowTypedef * at_flow, AtCommandParametersTypedef *pa
         }
         else
         {
-          _DP("AT cmommand lengh = 0\n");
+          //_DP("AT cmommand lengh = 0\n");
           at_state = AT_IDLE;
         }
       }
